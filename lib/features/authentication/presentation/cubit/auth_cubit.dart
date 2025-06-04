@@ -146,7 +146,8 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       // Clear stored token
       await di.clearAuthData();
-      
+
+      // Navigation should be handled in the UI after receiving AuthUnauthenticated state.
       // TODO: Call logout use case when implemented
       // final result = await logoutUser(NoParams());
       

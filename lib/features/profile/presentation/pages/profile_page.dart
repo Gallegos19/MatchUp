@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:matchup/core/router/app_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../authentication/presentation/cubit/auth_cubit.dart';
@@ -520,6 +522,7 @@ class ProfilePage extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).pop();
                 context.read<AuthCubit>().logout();
+                context.go(AppRouter.login);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
