@@ -20,69 +20,43 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
-  Future<Either<Failure, void>> forgotPassword({
+  Future<Either<Failure, User>> login({
     required String email,
+    required String password,
   }) async {
     if (await networkInfo.isConnected) {
       try {
-        await remoteDataSource.forgotPassword(email: email);
-        return const Right(null);
-      } on ValidationException catch (e) {
-        return Left(ValidationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NotFoundException catch (e) {
-        return Left(UserNotFoundFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
-      }
-    } else {
-      return const Left(NetworkFailure(
-        message: 'No hay conexión a internet',
-      ));
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> resetPassword({
-    required String token,
-    required String newPassword,
-  }) async {
-    if (await networkInfo.isConnected) {
-      try {
-        await remoteDataSource.resetPassword(
-          token: token,
-          newPassword: newPassword,
+        final userModel = await remoteDataSource.login(
+          email: email,
+          password: password,
         );
-        return const Right(null);
+
+        // Cache user data locally
+        await localDataSource.cacheUser(userModel);
+        
+        // Cache token if available
+        if (userModel.token != null) {
+          await localDataSource.cacheToken(userModel.token!);
+        }
+
+        return Right(userModel.toEntity());
+      } on AuthenticationException catch (e) {
+        return Left(AuthenticationFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
       } on ValidationException catch (e) {
         return Left(ValidationFailure(
           message: e.message,
           code: e.statusCode,
         ));
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(
           message: e.message,
           code: e.statusCode,
         ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
+      } on TimeoutException catch (e) {
+        return Left(TimeoutFailure(
           message: e.message,
           code: e.statusCode,
         ));
@@ -110,10 +84,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     if (await networkInfo.isConnected) {
       try {
-        await remoteDataSource.changePassword(
-          currentPassword: currentPassword,
-          newPassword: newPassword,
-        );
+        // TODO: Implement when available in API
         return const Right(null);
       } on ValidationException catch (e) {
         return Left(ValidationFailure(
@@ -156,7 +127,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, void>> deleteAccount() async {
     if (await networkInfo.isConnected) {
       try {
-        await remoteDataSource.deleteAccount();
+        // TODO: Implement when available in API
         await localDataSource.clearAllAuthData();
         return const Right(null);
       } on UnauthorizedException catch (e) {
@@ -190,9 +161,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, String>> refreshToken() async {
     if (await networkInfo.isConnected) {
       try {
-        final newToken = await remoteDataSource.refreshToken();
-        await localDataSource.cacheToken(newToken);
-        return Right(newToken);
+        // TODO: Implement when available in API
+        return const Left(ServerFailure(message: 'Refresh token no implementado'));
       } on UnauthorizedException catch (e) {
         // Clear local data if refresh fails
         await localDataSource.clearAllAuthData();
@@ -223,74 +193,53 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, User>> login({
-    required String email,
-    required String password,
-  }) async {
-    if (await networkInfo.isConnected) {
-      try {
-        final userModel = await remoteDataSource.login(
-          email: email,
-          password: password,
-        );
-
-        // Cache user data locally
-        await localDataSource.cacheUser(userModel);
-
-        return Right(userModel.toEntity());
-      } on AuthenticationException catch (e) {
-        return Left(AuthenticationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ValidationException catch (e) {
-        return Left(ValidationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on TimeoutException catch (e) {
-        return Left(TimeoutFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
-      }
-    } else {
-      return const Left(NetworkFailure(
-        message: 'No hay conexión a internet',
-      ));
-    }
+Future<Either<Failure, void>> clearAllAuthData() async {
+  try {
+    await localDataSource.clearAllAuthData();
+    return const Right(null);
+  } on CacheException catch (e) {
+    return Left(CacheFailure(
+      message: e.message,
+      code: e.statusCode,
+    ));
+  } catch (e) {
+    return Left(UnknownFailure(
+      message: 'Error al limpiar datos de autenticación: $e',
+    ));
   }
+}
 
   @override
   Future<Either<Failure, User>> register({
     required String email,
     required String password,
-    required String name,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    required String career,
+    required int semester,
+    required String campus,
   }) async {
     if (await networkInfo.isConnected) {
       try {
         final userModel = await remoteDataSource.register(
           email: email,
           password: password,
-          name: name,
+          firstName: firstName,
+          lastName: lastName,
+          dateOfBirth: dateOfBirth,
+          career: career,
+          semester: semester,
+          campus: campus,
         );
 
         // Cache user data locally
         await localDataSource.cacheUser(userModel);
+        
+        // Cache token if available
+        if (userModel.token != null) {
+          await localDataSource.cacheToken(userModel.token!);
+        }
 
         return Right(userModel.toEntity());
       } on ConflictException catch (e) {
@@ -438,19 +387,170 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, void>> clearAllAuthData() async {
-    try {
-      await localDataSource.clearAllAuthData();
-      return const Right(null);
-    } on CacheException catch (e) {
-      return Left(CacheFailure(
-        message: e.message,
-        code: e.statusCode,
+  Future<Either<Failure, void>> verifyEmail(String token) async {
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.verifyEmail(token);
+        return const Right(null);
+      } on ValidationException catch (e) {
+        return Left(ValidationFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on UnauthorizedException catch (e) {
+        return Left(UnauthorizedFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on ServerException catch (e) {
+        return Left(ServerFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } catch (e) {
+        return Left(UnknownFailure(
+          message: 'Error inesperado: $e',
+        ));
+      }
+    } else {
+      return const Left(NetworkFailure(
+        message: 'No hay conexión a internet',
       ));
-    } catch (e) {
-      return Left(UnknownFailure(
-        message: 'Error al limpiar datos de autenticación: $e',
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> updateProfile({
+    String? bio,
+    List<String>? interests,
+  }) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final userModel = await remoteDataSource.updateProfile(
+          bio: bio,
+          interests: interests,
+        );
+
+        // Update cache with new data
+        await localDataSource.cacheUser(userModel);
+
+        return Right(userModel.toEntity());
+      } on ValidationException catch (e) {
+        return Left(ValidationFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on UnauthorizedException catch (e) {
+        return Left(UnauthorizedFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on ServerException catch (e) {
+        return Left(ServerFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } catch (e) {
+        return Left(UnknownFailure(
+          message: 'Error inesperado: $e',
+        ));
+      }
+    } else {
+      return const Left(NetworkFailure(
+        message: 'No hay conexión a internet',
+      ));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> forgotPassword({
+    required String email,
+  }) async {
+    if (await networkInfo.isConnected) {
+      try {
+        // TODO: Implement when available in API
+        return const Right(null);
+      } on ValidationException catch (e) {
+        return Left(ValidationFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on NotFoundException catch (e) {
+        return Left(UserNotFoundFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on ServerException catch (e) {
+        return Left(ServerFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } catch (e) {
+        return Left(UnknownFailure(
+          message: 'Error inesperado: $e',
+        ));
+      }
+    } else {
+      return const Left(NetworkFailure(
+        message: 'No hay conexión a internet',
+      ));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    if (await networkInfo.isConnected) {
+      try {
+        // TODO: Implement when available in API
+        return const Right(null);
+      } on ValidationException catch (e) {
+        return Left(ValidationFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on UnauthorizedException catch (e) {
+        return Left(UnauthorizedFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on NetworkException catch (e) {
+        return Left(NetworkFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } on ServerException catch (e) {
+        return Left(ServerFailure(
+          message: e.message,
+          code: e.statusCode,
+        ));
+      } catch (e) {
+        return Left(UnknownFailure(
+          message: 'Error inesperado: $e',
+        ));
+      }
+    } else {
+      return const Left(NetworkFailure(
+        message: 'No hay conexión a internet',
       ));
     }
   }
 }
+

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:matchup/features/discovery/domain/entities/swipe_action.dart' as entity;
+import 'package:matchup/features/discovery/presentation/widgets/swipe_cards.dart';import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../domain/entities/profile.dart';
-import '../../domain/repositories/discovery_repository.dart';
 import '../cubit/discovery_cubit.dart';
-import '../widgets/swipe_cards.dart';
 import '../widgets/discovery_action_buttons.dart';
 
 class DiscoveryPage extends StatefulWidget {
@@ -14,6 +13,7 @@ class DiscoveryPage extends StatefulWidget {
   @override
   State<DiscoveryPage> createState() => _DiscoveryPageState();
 }
+
 
 class _DiscoveryPageState extends State<DiscoveryPage> {
   // Remove the GlobalKey since we don't need it - we'll access methods differently
@@ -234,7 +234,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
   }
 
   // Action handlers
-  void _handleSwipe(String profileId, SwipeAction action) {
+  void _handleSwipe(String profileId, entity.SwipeAction action) {
     context.read<DiscoveryCubit>().handleSwipe(
       profileId: profileId,
       action: action,
@@ -252,7 +252,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     if (cubit.currentProfile != null) {
       cubit.handleSwipe(
         profileId: cubit.currentProfile!.id,
-        action: SwipeAction.dislike,
+        action: entity.SwipeAction.dislike,
       );
     }
   }
@@ -262,7 +262,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     if (cubit.currentProfile != null) {
       cubit.handleSwipe(
         profileId: cubit.currentProfile!.id,
-        action: SwipeAction.superLike,
+        action: entity.SwipeAction.superlike,
       );
     }
   }
@@ -273,7 +273,7 @@ class _DiscoveryPageState extends State<DiscoveryPage> {
     if (cubit.currentProfile != null) {
       cubit.handleSwipe(
         profileId: cubit.currentProfile!.id,
-        action: SwipeAction.like,
+        action: entity.SwipeAction.like,
       );
     }
   }

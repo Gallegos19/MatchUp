@@ -1,3 +1,4 @@
+// lib/features/authentication/data/models/user_model.dart
 import 'package:json_annotation/json_annotation.dart';
 import '../../domain/entities/user.dart';
 
@@ -26,22 +27,92 @@ class UserModel extends User {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle different API response structures
+    final userData = json['user'] ?? json;
+    
     return UserModel(
-      id: json['id'],
-      email: json['email'],
-      name: '${json['firstName']} ${json['lastName']}',
-      age: null,
-      career: json['academicProfile']?['career'],
-      semester: json['academicProfile']?['semester']?.toString(),
-      campus: json['academicProfile']?['campus'],
-      bio: null,
-      interests: [],
-      photoUrls: [],
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      isActive: true,
-      isProfileComplete: json['isProfileComplete'] ?? false,
+      id: userData['id'] ?? '',
+      email: userData['email'] ?? '',
+      name: _buildFullName(userData),
+      age: _calculateAge(userData['dateOfBirth']),
+      career: userData['academicProfile']?['career'] ?? userData['career'],
+      semester: _parseSemester(userData['academicProfile']?['semester'] ?? userData['semester']),
+      campus: userData['academicProfile']?['campus'] ?? userData['campus'] ?? '',
+      bio: userData['bio'],
+      interests: _parseInterests(userData['interests']),
+      photoUrls: _parsePhotoUrls(userData['photos'] ?? userData['photoUrls']),
+      createdAt: _parseDateTime(userData['createdAt']),
+      updatedAt: _parseDateTime(userData['updatedAt']),
+      isActive: userData['isActive'] ?? true,
+      isProfileComplete: userData['isProfileComplete'] ?? false,
+      token: json['token'],
     );
+  }
+
+  static String _buildFullName(Map<String, dynamic> userData) {
+    final firstName = userData['firstName'] ?? '';
+    final lastName = userData['lastName'] ?? '';
+    final fullName = userData['name'];
+    
+    if (fullName != null && fullName.isNotEmpty) {
+      return fullName;
+    }
+    
+    return '$firstName $lastName'.trim();
+  }
+
+  static int? _calculateAge(dynamic dateOfBirth) {
+    if (dateOfBirth == null) return null;
+    
+    try {
+      final birthDate = DateTime.parse(dateOfBirth.toString());
+      final today = DateTime.now();
+      int age = today.year - birthDate.year;
+      
+      if (today.month < birthDate.month ||
+          (today.month == birthDate.month && today.day < birthDate.day)) {
+        age--;
+      }
+      
+      return age;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static String? _parseSemester(dynamic semester) {
+    if (semester == null) return null;
+    return semester.toString();
+  }
+
+  static List<String> _parseInterests(dynamic interests) {
+    if (interests == null) return [];
+    
+    if (interests is List) {
+      return interests.map((e) => e.toString()).toList();
+    }
+    
+    return [];
+  }
+
+  static List<String> _parsePhotoUrls(dynamic photos) {
+    if (photos == null) return [];
+    
+    if (photos is List) {
+      return photos.map((e) => e.toString()).toList();
+    }
+    
+    return [];
+  }
+
+  static DateTime _parseDateTime(dynamic dateTime) {
+    if (dateTime == null) return DateTime.now();
+    
+    try {
+      return DateTime.parse(dateTime.toString());
+    } catch (e) {
+      return DateTime.now();
+    }
   }
 
   UserModel copyWithToken(String token) {

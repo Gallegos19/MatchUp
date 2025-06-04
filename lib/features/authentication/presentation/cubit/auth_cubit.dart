@@ -5,6 +5,7 @@ import '../../../../core/errors/failures.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_user.dart';
 import '../../domain/usecases/register_user.dart';
+import '../../../../di/injection_container.dart' as di;
 
 // States
 abstract class AuthState extends Equatable {
@@ -89,7 +90,11 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthError(message: _getFailureMessage(failure)));
         return false;
       },
-      (user) {
+      (user) async {
+        // Store token if available
+        if (user is AuthenticatedUser && user.token != null) {
+          await di.updateStoredToken(user.token!);
+        }
         emit(AuthAuthenticated(user: user));
         return true;
       },
@@ -99,14 +104,24 @@ class AuthCubit extends Cubit<AuthState> {
   Future<bool> register({
     required String email,
     required String password,
-    required String name,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    required String career,
+    required int semester,
+    required String campus,
   }) async {
     emit(AuthLoading());
 
     final result = await registerUser(RegisterParams(
       email: email.trim(),
       password: password,
-      name: name.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      dateOfBirth: dateOfBirth,
+      career: career.trim(),
+      semester: semester,
+      campus: campus.trim(),
     ));
 
     return result.fold(
@@ -114,7 +129,11 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthError(message: _getFailureMessage(failure)));
         return false;
       },
-      (user) {
+      (user) async {
+        // Store token if available
+        if (user is AuthenticatedUser && user.token != null) {
+          await di.updateStoredToken(user.token!);
+        }
         emit(AuthAuthenticated(user: user));
         return true;
       },
@@ -124,12 +143,17 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> logout() async {
     emit(AuthLoading());
     
-    // TODO: Call logout use case when implemented
-    // final result = await logoutUser(NoParams());
-    
-    // For now, just emit unauthenticated
-    await Future.delayed(const Duration(milliseconds: 500)); // Simulate API call
-    emit(AuthUnauthenticated());
+    try {
+      // Clear stored token
+      await di.clearAuthData();
+      
+      // TODO: Call logout use case when implemented
+      // final result = await logoutUser(NoParams());
+      
+      emit(AuthUnauthenticated());
+    } catch (e) {
+      emit(AuthError(message: 'Error al cerrar sesión: $e'));
+    }
   }
 
   void clearError() {
@@ -142,12 +166,26 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> checkAuthStatus() async {
     emit(AuthLoading());
     
-    // TODO: Implement check if user is logged in
-    // final result = await getCurrentUser(NoParams());
-    
-    // For now, just emit unauthenticated
-    await Future.delayed(const Duration(milliseconds: 1000)); // Simulate check
-    emit(AuthUnauthenticated());
+    try {
+      // Check if we have a stored token
+      final token = await di.getStoredToken();
+      
+      if (token != null && token.isNotEmpty) {
+        // TODO: Validate token with server and get current user
+        // For now, we'll assume the token is valid
+        // final result = await getCurrentUser(NoParams());
+        
+        // Simulate token validation
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // For now, just emit unauthenticated if no valid user data
+        emit(AuthUnauthenticated());
+      } else {
+        emit(AuthUnauthenticated());
+      }
+    } catch (e) {
+      emit(AuthUnauthenticated());
+    }
   }
 
   String _getFailureMessage(Failure failure) {
@@ -175,5 +213,48 @@ class AuthCubit extends Cubit<AuthState> {
             ? failure.message 
             : 'Ha ocurrido un error inesperado';
     }
+  }
+}
+
+// Helper class for authenticated user with token
+class AuthenticatedUser extends User {
+  final String? token;
+
+  const AuthenticatedUser({
+    required super.id,
+    required super.email,
+    required super.name,
+    required super.age,
+    required super.career,
+    required super.semester,
+    required super.campus,
+    required super.bio,
+    required super.interests,
+    required super.photoUrls,
+    required super.createdAt,
+    required super.updatedAt,
+    required super.isActive,
+    required super.isProfileComplete,
+    this.token,
+  });
+
+  factory AuthenticatedUser.fromUser(User user, String? token) {
+    return AuthenticatedUser(
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      age: user.age,
+      career: user.career,
+      semester: user.semester,
+      campus: user.campus,
+      bio: user.bio,
+      interests: user.interests,
+      photoUrls: user.photoUrls,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      isActive: user.isActive,
+      isProfileComplete: user.isProfileComplete,
+      token: token,
+    );
   }
 }

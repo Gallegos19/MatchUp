@@ -1,4 +1,3 @@
-// lib/features/authentication/presentation/pages/register_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,26 +19,49 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
+  final _careerController = TextEditingController();
   
-  final _nameFocusNode = FocusNode();
+  final _firstNameFocusNode = FocusNode();
+  final _lastNameFocusNode = FocusNode();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _confirmPasswordFocusNode = FocusNode();
+  final _dateOfBirthFocusNode = FocusNode();
+  final _careerFocusNode = FocusNode();
+
+  int _selectedSemester = 1;
+  String _selectedCampus = 'Tuxtla Gutiérrez';
+
+  final List<String> _campusOptions = [
+    'Tuxtla Gutiérrez',
+    'Suchiapa',
+    'Tapachula',
+    'Comitán',
+    'San Cristóbal',
+  ];
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _nameFocusNode.dispose();
+    _dateOfBirthController.dispose();
+    _careerController.dispose();
+    _firstNameFocusNode.dispose();
+    _lastNameFocusNode.dispose();
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     _confirmPasswordFocusNode.dispose();
+    _dateOfBirthFocusNode.dispose();
+    _careerFocusNode.dispose();
     super.dispose();
   }
 
@@ -67,7 +89,7 @@ class _RegisterPageState extends State<RegisterPage> {
               listener: (context, state) {
                 if (state is AuthAuthenticated) {
                   _showSuccessSnackBar();
-                  context.go(AppRouter.completeProfile);
+                  context.go(AppRouter.home);
                 } else if (state is AuthError) {
                   _showErrorSnackBar(state.message);
                 }
@@ -89,16 +111,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   
                   // Register Button
                   _buildRegisterButton(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Divider
-                  _buildDivider(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Social Register
-                  _buildSocialRegister(),
                   
                   const SizedBox(height: 32),
                   
@@ -173,12 +185,26 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildRegisterForm() {
     return Column(
       children: [
-        // Name Field
+        // First Name Field
         CustomTextField(
-          label: AppStrings.name,
-          hint: 'Ingresa tu nombre completo',
-          controller: _nameController,
-          focusNode: _nameFocusNode,
+          label: 'Nombre',
+          hint: 'Ingresa tu nombre',
+          controller: _firstNameController,
+          focusNode: _firstNameFocusNode,
+          textInputAction: TextInputAction.next,
+          prefixIcon: Icons.person_outline,
+          validator: Validators.validateName,
+          onSubmitted: (_) => _lastNameFocusNode.requestFocus(),
+        ),
+        
+        const SizedBox(height: 20),
+
+        // Last Name Field
+        CustomTextField(
+          label: 'Apellidos',
+          hint: 'Ingresa tus apellidos',
+          controller: _lastNameController,
+          focusNode: _lastNameFocusNode,
           textInputAction: TextInputAction.next,
           prefixIcon: Icons.person_outline,
           validator: Validators.validateName,
@@ -197,8 +223,55 @@ class _RegisterPageState extends State<RegisterPage> {
           textInputAction: TextInputAction.next,
           prefixIcon: Icons.email_outlined,
           validator: Validators.validateInstitutionalEmail,
+          onSubmitted: (_) => _dateOfBirthFocusNode.requestFocus(),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Date of Birth Field
+        GestureDetector(
+          onTap: _selectDate,
+          child: AbsorbPointer(
+            child: CustomTextField(
+              label: 'Fecha de Nacimiento',
+              hint: 'DD/MM/AAAA',
+              controller: _dateOfBirthController,
+              focusNode: _dateOfBirthFocusNode,
+              textInputAction: TextInputAction.next,
+              prefixIcon: Icons.calendar_today_outlined,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'La fecha de nacimiento es requerida';
+                }
+                return null;
+              },
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Career Field
+        CustomTextField(
+          label: 'Carrera',
+          hint: 'Ej: Ingeniería en Sistemas',
+          controller: _careerController,
+          focusNode: _careerFocusNode,
+          textInputAction: TextInputAction.next,
+          prefixIcon: Icons.school_outlined,
+          validator: Validators.validateCareer,
           onSubmitted: (_) => _passwordFocusNode.requestFocus(),
         ),
+
+        const SizedBox(height: 20),
+
+        // Semester Dropdown
+        _buildSemesterDropdown(),
+
+        const SizedBox(height: 20),
+
+        // Campus Dropdown
+        _buildCampusDropdown(),
         
         const SizedBox(height: 20),
         
@@ -252,6 +325,98 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Widget _buildSemesterDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Semestre',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.borderLight,
+              width: 2,
+            ),
+          ),
+          child: DropdownButtonFormField<int>(
+            value: _selectedSemester,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              prefixIcon: Icon(Icons.school, color: AppColors.textHint),
+            ),
+            items: List.generate(12, (index) => index + 1)
+                .map((semester) => DropdownMenuItem(
+                      value: semester,
+                      child: Text('$semester° Semestre'),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedSemester = value ?? 1;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCampusDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Campus',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.borderLight,
+              width: 2,
+            ),
+          ),
+          child: DropdownButtonFormField<String>(
+            value: _selectedCampus,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              prefixIcon: Icon(Icons.location_on, color: AppColors.textHint),
+            ),
+            items: _campusOptions
+                .map((campus) => DropdownMenuItem(
+                      value: campus,
+                      child: Text(campus),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedCampus = value ?? _campusOptions.first;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRegisterButton() {
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
@@ -264,40 +429,6 @@ class _RegisterPageState extends State<RegisterPage> {
           height: 56,
         );
       },
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.borderLight)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            AppStrings.or,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.borderLight)),
-      ],
-    );
-  }
-
-  Widget _buildSocialRegister() {
-    return Column(
-      children: [
-        CustomButton(
-          text: '${AppStrings.continueWith} Google',
-          onPressed: _handleGoogleRegister,
-          type: ButtonType.outline,
-          width: double.infinity,
-          height: 56,
-          icon: Icons.g_mobiledata,
-        ),
-      ],
     );
   }
 
@@ -325,23 +456,56 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now().subtract(const Duration(days: 365 * 16)), // At least 16 years old
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _dateOfBirthController.text = 
+            '${picked.day.toString().padLeft(2, '0')}/'
+            '${picked.month.toString().padLeft(2, '0')}/'
+            '${picked.year}';
+      });
+    }
+  }
+
+  String _formatDateForApi(String displayDate) {
+    // Convert DD/MM/YYYY to YYYY-MM-DD
+    final parts = displayDate.split('/');
+    if (parts.length == 3) {
+      return '${parts[2]}-${parts[1]}-${parts[0]}';
+    }
+    return displayDate;
+  }
+
   void _handleRegister() async {
     if (_formKey.currentState?.validate() ?? false) {
       await context.read<AuthCubit>().register(
         email: _emailController.text,
         password: _passwordController.text,
-        name: _nameController.text,
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+        dateOfBirth: _formatDateForApi(_dateOfBirthController.text),
+        career: _careerController.text,
+        semester: _selectedSemester,
+        campus: _selectedCampus,
       );
     }
-  }
-
-  void _handleGoogleRegister() {
-    // TODO: Implementar registro con Google
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidad en desarrollo'),
-      ),
-    );
   }
 
   void _navigateToLogin() {

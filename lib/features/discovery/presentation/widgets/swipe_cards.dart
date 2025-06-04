@@ -1,9 +1,10 @@
 
 import 'package:flutter/material.dart';
+import 'package:matchup/features/discovery/domain/entities/swipe_action.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/profile.dart';
-import '../../domain/repositories/discovery_repository.dart';
 import 'profile_card.dart';
+
 
 class SwipeCards extends StatefulWidget {
   final List<Profile> profiles;

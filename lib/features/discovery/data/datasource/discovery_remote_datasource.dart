@@ -1,7 +1,7 @@
-// lib/features/discovery/data/datasource/discovery_remote_datasource.dart
 import 'package:dio/dio.dart';
+import 'package:matchup/features/discovery/domain/entities/discovery_filters.dart';
+import 'package:matchup/features/discovery/domain/entities/swipe_action.dart';
 import '../../../../core/errors/exceptions.dart';
-import '../../domain/repositories/discovery_repository.dart';
 import '../models/profile_model.dart';
 
 abstract class DiscoveryRemoteDataSource {
@@ -30,13 +30,13 @@ abstract class DiscoveryRemoteDataSource {
   });
 
   Future<List<ProfileModel>> getLikedProfiles({
-    int page = 1,
-    int limit = 10,
+    int page,
+    int limit,
   });
 
   Future<List<ProfileModel>> getPassedProfiles({
-    int page = 1,
-    int limit = 10,
+    int page,
+    int limit,
   });
 
   Future<void> undoLastSwipe();
@@ -59,30 +59,194 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
         'limit': limit,
       };
 
-      // Add filters to query params
+      // Add filters to query params if needed
       if (filters != null) {
         if (filters.minAge != null) queryParams['min_age'] = filters.minAge;
         if (filters.maxAge != null) queryParams['max_age'] = filters.maxAge;
         if (filters.careers != null) queryParams['careers'] = filters.careers;
-        if (filters.semesters != null) queryParams['semesters'] = filters.semesters;
-        if (filters.campuses != null) queryParams['campuses'] = filters.campuses;
-        if (filters.maxDistance != null) queryParams['max_distance'] = filters.maxDistance;
-        if (filters.interests != null) queryParams['interests'] = filters.interests;
+        if (filters.semesters != null)
+          queryParams['semesters'] = filters.semesters;
+        if (filters.campuses != null)
+          queryParams['campuses'] = filters.campuses;
+        if (filters.maxDistance != null)
+          queryParams['max_distance'] = filters.maxDistance;
+        if (filters.interests != null)
+          queryParams['interests'] = filters.interests;
       }
 
       final response = await dio.get(
-        '/discovery/profiles',
+        'matches/potential',
         queryParameters: queryParams,
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> profilesJson = response.data['profiles'];
+        final data = response.data['data'] ?? response.data;
+        final List<dynamic> profilesJson =
+            data is List ? data : data['users'] ?? [];
+
         return profilesJson
-            .map((json) => ProfileModel.fromJson(json))
+            .map((json) => ProfileModel.fromMatchApiJson(json))
             .toList();
       } else {
         throw ServerException(
           message: response.data['message'] ?? 'Error al obtener perfiles',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } catch (e) {
+      throw ServerException(
+        message: 'Error inesperado: $e',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<List<ProfileModel>> getPassedProfiles({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final response = await dio.get(
+        'matches/passed',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        final List<dynamic> profilesJson =
+            data is List ? data : data['users'] ?? [];
+
+        return profilesJson
+            .map((json) => ProfileModel.fromMatchApiJson(json))
+            .toList();
+      } else {
+        throw ServerException(
+          message: response.data['message'] ??
+              'Error al obtener perfiles rechazados',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } catch (e) {
+      throw ServerException(
+        message: 'Error inesperado: $e',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<void> undoLastSwipe() async {
+    try {
+      final response = await dio.post('matches/undo');
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Error al deshacer último swipe',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } catch (e) {
+      throw ServerException(
+        message: 'Error inesperado: $e',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<List<ProfileModel>> getLikedProfiles({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final response = await dio.get(
+        'matches/liked',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        final List<dynamic> profilesJson =
+            data is List ? data : data['users'] ?? [];
+
+        return profilesJson
+            .map((json) => ProfileModel.fromMatchApiJson(json))
+            .toList();
+      } else {
+        throw ServerException(
+          message:
+              response.data['message'] ?? 'Error al obtener perfiles gustados',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } catch (e) {
+      throw ServerException(
+        message: 'Error inesperado: $e',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<void> blockProfile({
+    required String profileId,
+  }) async {
+    try {
+      final response = await dio.post(
+        'users/block',
+        data: {
+          'userId': profileId,
+        },
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Error al bloquear perfil',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } catch (e) {
+      throw ServerException(
+        message: 'Error inesperado: $e',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<void> reportProfile({
+    required String profileId,
+    required String reason,
+  }) async {
+    try {
+      final response = await dio.post(
+        'users/report',
+        data: {
+          'userId': profileId,
+          'reason': reason,
+        },
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw ServerException(
+          message: response.data['message'] ?? 'Error al reportar perfil',
           statusCode: response.statusCode,
         );
       }
@@ -102,16 +266,30 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
     required SwipeAction action,
   }) async {
     try {
+      String actionString;
+      switch (action) {
+        case SwipeAction.like:
+          actionString = 'like';
+          break;
+        case SwipeAction.dislike:
+          actionString = 'dislike';
+          break;
+        case SwipeAction.superlike:
+          actionString = 'super_like';
+          break;
+      }
+
       final response = await dio.post(
-        '/discovery/swipe',
+        'matches/',
         data: {
-          'profile_id': profileId,
-          'action': action.toString().split('.').last,
+          'targetUserId': profileId,
+          'action': actionString,
         },
       );
 
-      if (response.statusCode == 200) {
-        return response.data['is_match'] ?? false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data['data'] ?? response.data;
+        return data['isMatch'] ?? false;
       } else {
         throw ServerException(
           message: response.data['message'] ?? 'Error al hacer swipe',
@@ -133,160 +311,14 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
     required String profileId,
   }) async {
     try {
-      final response = await dio.get('/discovery/profiles/$profileId');
+      final response = await dio.get('users/profile/$profileId');
 
       if (response.statusCode == 200) {
-        return ProfileModel.fromJson(response.data['profile']);
+        final userData = response.data['data'] ?? response.data;
+        return ProfileModel.fromMatchApiJson(userData);
       } else {
         throw ServerException(
           message: response.data['message'] ?? 'Error al obtener perfil',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<void> reportProfile({
-    required String profileId,
-    required String reason,
-  }) async {
-    try {
-      final response = await dio.post(
-        '/discovery/report',
-        data: {
-          'profile_id': profileId,
-          'reason': reason,
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al reportar perfil',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<void> blockProfile({
-    required String profileId,
-  }) async {
-    try {
-      final response = await dio.post(
-        '/discovery/block',
-        data: {'profile_id': profileId},
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al bloquear perfil',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<List<ProfileModel>> getLikedProfiles({
-    int page = 1,
-    int limit = 10,
-  }) async {
-    try {
-      final response = await dio.get(
-        '/discovery/liked',
-        queryParameters: {
-          'page': page,
-          'limit': limit,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> profilesJson = response.data['profiles'];
-        return profilesJson
-            .map((json) => ProfileModel.fromJson(json))
-            .toList();
-      } else {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al obtener likes',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<List<ProfileModel>> getPassedProfiles({
-    int page = 1,
-    int limit = 10,
-  }) async {
-    try {
-      final response = await dio.get(
-        '/discovery/passed',
-        queryParameters: {
-          'page': page,
-          'limit': limit,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> profilesJson = response.data['profiles'];
-        return profilesJson
-            .map((json) => ProfileModel.fromJson(json))
-            .toList();
-      } else {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al obtener perfiles pasados',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<void> undoLastSwipe() async {
-    try {
-      final response = await dio.post('/discovery/undo');
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al deshacer swipe',
           statusCode: response.statusCode,
         );
       }
@@ -309,30 +341,33 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
           message: 'Tiempo de espera agotado',
           statusCode: e.response?.statusCode,
         );
-      
+
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
         final message = e.response?.data['message'] ?? 'Error del servidor';
-        
+
         switch (statusCode) {
           case 400:
-            return ValidationException(message: message, statusCode: statusCode);
+            return ValidationException(
+                message: message, statusCode: statusCode);
           case 401:
-            return AuthenticationException(message: message, statusCode: statusCode);
+            return AuthenticationException(
+                message: message, statusCode: statusCode);
           case 403:
-            return UnauthorizedException(message: message, statusCode: statusCode);
+            return UnauthorizedException(
+                message: message, statusCode: statusCode);
           case 404:
             return NotFoundException(message: message, statusCode: statusCode);
           default:
             return ServerException(message: message, statusCode: statusCode);
         }
-      
+
       case DioExceptionType.connectionError:
         return NetworkException(
           message: 'Error de conexión. Verifica tu internet',
           statusCode: null,
         );
-      
+
       default:
         return ServerException(
           message: 'Error inesperado: ${e.message}',

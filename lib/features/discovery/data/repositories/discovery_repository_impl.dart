@@ -1,10 +1,12 @@
 // lib/features/discovery/data/repositories/discovery_repository_impl.dart
 import 'package:dartz/dartz.dart';
+import 'package:matchup/features/discovery/domain/entities/discovery_filters.dart';
+import 'package:matchup/features/discovery/domain/entities/swipe_action.dart';
+import 'package:matchup/features/discovery/domain/repositories/discovery_repository.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/entities/profile.dart';
-import '../../domain/repositories/discovery_repository.dart';
 import '../datasource/discovery_remote_datasource.dart';
 
 class DiscoveryRepositoryImpl implements DiscoveryRepository {
@@ -51,35 +53,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
 
         final profiles = profileModels.map((model) => model.toEntity()).toList();
         return Right(profiles);
-      } on ValidationException catch (e) {
-        return Left(ValidationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on TimeoutException catch (e) {
-        return Left(TimeoutFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -101,40 +76,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
         );
 
         return Right(isMatch);
-      } on ValidationException catch (e) {
-        return Left(ValidationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NotFoundException catch (e) {
-        return Left(UserNotFoundFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on TimeoutException catch (e) {
-        return Left(TimeoutFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -154,35 +97,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
         );
 
         return Right(profileModel.toEntity());
-      } on NotFoundException catch (e) {
-        return Left(UserNotFoundFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on TimeoutException catch (e) {
-        return Left(TimeoutFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -204,35 +120,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
         );
 
         return const Right(null);
-      } on ValidationException catch (e) {
-        return Left(ValidationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NotFoundException catch (e) {
-        return Left(UserNotFoundFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -249,30 +138,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
       try {
         await remoteDataSource.blockProfile(profileId: profileId);
         return const Right(null);
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NotFoundException catch (e) {
-        return Left(UserNotFoundFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -295,25 +162,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
 
         final profiles = profileModels.map((model) => model.toEntity()).toList();
         return Right(profiles);
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -336,25 +186,8 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
 
         final profiles = profileModels.map((model) => model.toEntity()).toList();
         return Right(profiles);
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
@@ -369,35 +202,31 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
       try {
         await remoteDataSource.undoLastSwipe();
         return const Right(null);
-      } on ValidationException catch (e) {
-        return Left(ValidationFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on UnauthorizedException catch (e) {
-        return Left(UnauthorizedFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on NetworkException catch (e) {
-        return Left(NetworkFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
-      } on ServerException catch (e) {
-        return Left(ServerFailure(
-          message: e.message,
-          code: e.statusCode,
-        ));
       } catch (e) {
-        return Left(UnknownFailure(
-          message: 'Error inesperado: $e',
-        ));
+        return _handleException(e);
       }
     } else {
       return const Left(NetworkFailure(
         message: 'No hay conexión a internet',
       ));
+    }
+  }
+
+  Either<Failure, T> _handleException<T>(Object e) {
+    if (e is ValidationException) {
+      return Left(ValidationFailure(message: e.message, code: e.statusCode));
+    } else if (e is UnauthorizedException) {
+      return Left(UnauthorizedFailure(message: e.message, code: e.statusCode));
+    } else if (e is NotFoundException) {
+      return Left(UserNotFoundFailure(message: e.message, code: e.statusCode));
+    } else if (e is NetworkException) {
+      return Left(NetworkFailure(message: e.message, code: e.statusCode));
+    } else if (e is TimeoutException) {
+      return Left(TimeoutFailure(message: e.message, code: e.statusCode));
+    } else if (e is ServerException) {
+      return Left(ServerFailure(message: e.message, code: e.statusCode));
+    } else {
+      return Left(UnknownFailure(message: 'Error inesperado: $e'));
     }
   }
 }

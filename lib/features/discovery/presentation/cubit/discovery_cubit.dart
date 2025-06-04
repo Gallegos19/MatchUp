@@ -1,8 +1,9 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:matchup/features/discovery/domain/entities/discovery_filters.dart';
+import 'package:matchup/features/discovery/domain/entities/swipe_action.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/profile.dart';
-import '../../domain/repositories/discovery_repository.dart';
 import '../../domain/usecases/get_profiles.dart';
 import '../../domain/usecases/swipe_profile.dart';
 import '../../domain/usecases/get_profile_details.dart';

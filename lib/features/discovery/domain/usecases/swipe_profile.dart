@@ -1,8 +1,9 @@
 import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
+import 'package:matchup/features/discovery/domain/repositories/discovery_repository.dart';
+import 'package:matchup/features/discovery/domain/entities/swipe_action.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/usecases/usecase.dart';
-import '../repositories/discovery_repository.dart';
 
 class SwipeProfile implements UseCase<bool, SwipeProfileParams> {
   final DiscoveryRepository repository;

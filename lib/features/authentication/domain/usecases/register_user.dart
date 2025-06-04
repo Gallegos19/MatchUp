@@ -15,7 +15,12 @@ class RegisterUser implements UseCase<User, RegisterParams> {
     return await repository.register(
       email: params.email,
       password: params.password,
-      name: params.name,
+      firstName: params.firstName,
+      lastName: params.lastName,
+      dateOfBirth: params.dateOfBirth,
+      career: params.career,
+      semester: params.semester,
+      campus: params.campus,
     );
   }
 }
@@ -23,14 +28,33 @@ class RegisterUser implements UseCase<User, RegisterParams> {
 class RegisterParams extends Equatable {
   final String email;
   final String password;
-  final String name;
+  final String firstName;
+  final String lastName;
+  final String dateOfBirth;
+  final String career;
+  final int semester;
+  final String campus;
 
   const RegisterParams({
     required this.email,
     required this.password,
-    required this.name,
+    required this.firstName,
+    required this.lastName,
+    required this.dateOfBirth,
+    required this.career,
+    required this.semester,
+    required this.campus,
   });
 
   @override
-  List<Object> get props => [email, password, name];
+  List<Object> get props => [
+        email,
+        password,
+        firstName,
+        lastName,
+        dateOfBirth,
+        career,
+        semester,
+        campus,
+      ];
 }

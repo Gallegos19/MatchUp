@@ -1,4 +1,3 @@
-// lib/features/authentication/data/datasource/auth_remote_datasource.dart
 import 'package:dio/dio.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../models/user_model.dart';
@@ -12,28 +11,21 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> register({
     required String email,
     required String password,
-    required String name,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    required String career,
+    required int semester,
+    required String campus,
   });
 
   Future<void> logout();
-
   Future<UserModel> getCurrentUser();
-
-  Future<void> forgotPassword({required String email});
-
-  Future<void> resetPassword({
-    required String token,
-    required String newPassword,
+  Future<void> verifyEmail(String token);
+  Future<UserModel> updateProfile({
+    String? bio,
+    List<String>? interests,
   });
-
-  Future<void> changePassword({
-    required String currentPassword,
-    required String newPassword,
-  });
-
-  Future<void> deleteAccount();
-
-  Future<String> refreshToken();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -48,7 +40,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }) async {
     try {
       final response = await dio.post(
-        '/auth/login',
+        'auth/login',
         data: {
           'email': email,
           'password': password,
@@ -60,7 +52,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         final userJson = data['user'];
         final token = data['token'];
 
-        // Inyectamos el token en el modelo
+        // Store token for future requests
+        dio.options.headers['Authorization'] = 'Bearer $token';
+        
         return UserModel.fromJson(userJson).copyWithToken(token);
       } else {
         throw ServerException(
@@ -82,21 +76,39 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> register({
     required String email,
     required String password,
-    required String name,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    required String career,
+    required int semester,
+    required String campus,
   }) async {
     try {
       final response = await dio.post(
-        '/auth/register',
+        'auth/register',
         data: {
           'email': email,
           'password': password,
-          'name': name,
+          'firstName': firstName,
+          'lastName': lastName,
+          'dateOfBirth': dateOfBirth,
+          'career': career,
+          'semester': semester,
+          'campus': campus,
         },
       );
 
-      if (response.statusCode == 201) {
-        final userData = response.data['user'];
-        return UserModel.fromJson(userData);
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        final userJson = data['user'] ?? data;
+        final token = data['token'];
+
+        if (token != null) {
+          dio.options.headers['Authorization'] = 'Bearer $token';
+          return UserModel.fromJson(userJson).copyWithToken(token);
+        }
+        
+        return UserModel.fromJson(userJson);
       } else {
         throw ServerException(
           message: response.data['message'] ?? 'Error en el registro',
@@ -114,13 +126,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> logout() async {
+  Future<void> verifyEmail(String token) async {
     try {
-      final response = await dio.post('/auth/logout');
+      final response = await dio.get('auth/verify-email/$token');
 
       if (response.statusCode != 200) {
         throw ServerException(
-          message: response.data['message'] ?? 'Error al cerrar sesión',
+          message: response.data['message'] ?? 'Error al verificar email',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      throw _handleDioException(e);
+    } catch (e) {
+      throw ServerException(
+        message: 'Error inesperado: $e',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<UserModel> updateProfile({
+    String? bio,
+    List<String>? interests,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (bio != null) data['bio'] = bio;
+      if (interests != null) data['interests'] = interests;
+
+      final response = await dio.put('users/profile', data: data);
+
+      if (response.statusCode == 200) {
+        final userData = response.data['data'] ?? response.data;
+        return UserModel.fromJson(userData);
+      } else {
+        throw ServerException(
+          message: response.data['message'] ?? 'Error al actualizar perfil',
           statusCode: response.statusCode,
         );
       }
@@ -137,10 +180,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> getCurrentUser() async {
     try {
-      final response = await dio.get('/auth/me');
+      final response = await dio.get('users/profile');
 
       if (response.statusCode == 200) {
-        final userData = response.data['user'];
+        final userData = response.data['data'] ?? response.data;
         return UserModel.fromJson(userData);
       } else {
         throw ServerException(
@@ -159,125 +202,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> forgotPassword({required String email}) async {
+  Future<void> logout() async {
     try {
-      final response = await dio.post(
-        '/auth/forgot-password',
-        data: {'email': email},
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al enviar email',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<void> resetPassword({
-    required String token,
-    required String newPassword,
-  }) async {
-    try {
-      final response = await dio.post(
-        '/auth/reset-password',
-        data: {
-          'token': token,
-          'newPassword': newPassword,
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al cambiar contraseña',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<void> changePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    try {
-      final response = await dio.put(
-        '/auth/change-password',
-        data: {
-          'currentPassword': currentPassword,
-          'newPassword': newPassword,
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al cambiar contraseña',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<void> deleteAccount() async {
-    try {
-      final response = await dio.delete('/auth/account');
-
-      if (response.statusCode != 200) {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al eliminar cuenta',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
-    } catch (e) {
-      throw ServerException(
-        message: 'Error inesperado: $e',
-        statusCode: 500,
-      );
-    }
-  }
-
-  @override
-  Future<String> refreshToken() async {
-    try {
-      final response = await dio.post('/auth/refresh-token');
-
-      if (response.statusCode == 200) {
-        return response.data['accessToken'];
-      } else {
-        throw ServerException(
-          message: response.data['message'] ?? 'Error al renovar token',
-          statusCode: response.statusCode,
-        );
-      }
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+      // Remove authorization header
+      dio.options.headers.remove('Authorization');
+      // In this API, logout seems to be handled client-side
     } catch (e) {
       throw ServerException(
         message: 'Error inesperado: $e',
@@ -302,14 +231,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
         switch (statusCode) {
           case 400:
-            return ValidationException(
-                message: message, statusCode: statusCode);
+            return ValidationException(message: message, statusCode: statusCode);
           case 401:
-            return AuthenticationException(
-                message: message, statusCode: statusCode);
+            return AuthenticationException(message: message, statusCode: statusCode);
           case 403:
-            return UnauthorizedException(
-                message: message, statusCode: statusCode);
+            return UnauthorizedException(message: message, statusCode: statusCode);
           case 404:
             return NotFoundException(message: message, statusCode: statusCode);
           case 409:
