@@ -61,6 +61,19 @@ import '../features/study_groups/domain/usecases/create_study_group.dart';
 import '../features/study_groups/domain/usecases/join_study_group.dart';
 import '../features/study_groups/presentation/cubit/study_groups_cubit.dart';
 
+// Add these imports at the top with the other profile imports
+import '../features/profile/data/datasource/profile_local_datasource.dart';
+import '../features/profile/data/datasource/profile_remote_datasource.dart';
+import '../features/profile/data/repositories/profile_repository_impl.dart';
+import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/profile/domain/usecases/get_profile.dart';
+import '../features/profile/domain/usecases/update_profile.dart';
+import '../features/profile/domain/usecases/upload_photos.dart';
+import '../features/profile/domain/usecases/get_profile_stats.dart';
+import '../features/profile/domain/usecases/update_profile_settings.dart';
+import '../features/profile/domain/usecases/change_password.dart';
+import '../features/profile/presentation/cubit/profile_cubit.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -77,7 +90,7 @@ Future<void> init() async {
     final dio = Dio();
 
     dio.options = BaseOptions(
-      baseUrl: 'http://192.168.167.107:3000/api/v1/',
+      baseUrl: 'http://192.168.0.119:3000/api/v1/',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
@@ -148,6 +161,45 @@ Future<void> init() async {
     () => AuthLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
+  //! Features - Profile
+  // Cubit
+  sl.registerFactory(
+    () => ProfileCubit(
+      getProfile: sl(),
+      updateProfile: sl(),
+      uploadPhotos: sl(),
+      getProfileStats: sl(),
+      updateProfileSettings: sl(),
+      changePassword: sl(),
+    ),
+  );
+
+  // Use cases
+  sl.registerLazySingleton(() => GetProfile(sl()));
+  sl.registerLazySingleton(() => UpdateProfile(sl()));
+  sl.registerLazySingleton(() => UploadPhotos(sl()));
+  sl.registerLazySingleton(() => GetProfileStats(sl()));
+  sl.registerLazySingleton(() => UpdateProfileSettings(sl()));
+  sl.registerLazySingleton(() => ChangePassword(sl()));
+
+  // Repository
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(
+      remoteDataSource: sl(),
+      localDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  // Data sources
+  sl.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(dio: sl()),
+  );
+
+  sl.registerLazySingleton<ProfileLocalDataSource>(
+    () => ProfileLocalDataSourceImpl(sharedPreferences: sl()),
+  );
+
   //! Features - Discovery
   // Cubit
   sl.registerFactory(
@@ -187,7 +239,7 @@ Future<void> init() async {
   sl.registerLazySingleton<MatchRemoteDatasource>(
     () => MatchRemoteDatasourceImpl(
       client: sl(),
-      baseUrl: 'http://192.168.167.107:3000',
+      baseUrl: 'http://192.168.0.119:3000',
       token: '', // Token will be handled by interceptor
     ),
   );

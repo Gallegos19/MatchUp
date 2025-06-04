@@ -1,3 +1,5 @@
+// lib/core/router/app_router.dart - PROFILE INTEGRATION FIX
+
 // lib/core/router/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -48,12 +50,11 @@ class AppRouter {
         name: 'home',
         builder: (context, state) => MultiBlocProvider(
           providers: [
-            BlocProvider(create: (_) => NavigationCubit()), // <-- Agrega esto
+            BlocProvider(create: (_) => NavigationCubit()),
             BlocProvider(create: (_) => sl<DiscoveryCubit>()..loadProfiles()),
             ChangeNotifierProvider(create: (_) => sl<MatchViewModel>()..loadMatches()),
-            Provider(create: (_) => sl<MatchViewModel>()..loadMatches()),
             BlocProvider(create: (_) => sl<ChatCubit>()..loadConversations()),
-            BlocProvider(create: (_) => sl<ProfileCubit>()),
+            BlocProvider(create: (_) => sl<ProfileCubit>()..getProfileData()),
           ],
           child: const MainNavigationPage(
             initialTab: NavigationTab.discovery,

@@ -199,6 +199,47 @@ class ProfileStatsModel {
     );
   }
 }
+extension UserProfileModelExtension on UserProfileModel {
+  UserProfileModel copyWith({
+    String? id,
+    String? email,
+    String? firstName,
+    String? lastName,
+    String? bio,
+    int? age,
+    String? career,
+    String? semester,
+    String? campus,
+    List<String>? interests,
+    List<String>? photoUrls,
+    ProfileSettingsModel? settings,
+    ProfileStatsModel? stats,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isActive,
+    bool? isVerified,
+  }) {
+    return UserProfileModel(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      bio: bio ?? this.bio,
+      age: age ?? this.age,
+      career: career ?? this.career,
+      semester: semester ?? this.semester,
+      campus: campus ?? this.campus,
+      interests: interests ?? this.interests,
+      photoUrls: photoUrls ?? this.photoUrls,
+      settings: settings ?? this.settings,
+      stats: stats ?? this.stats,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isActive: isActive ?? this.isActive,
+      isVerified: isVerified ?? this.isVerified,
+    );
+  }
+}
 
 @JsonSerializable()
 class AgeRangeModel {

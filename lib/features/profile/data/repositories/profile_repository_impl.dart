@@ -1,4 +1,3 @@
-// lib/features/profile/data/repositories/profile_repository_impl.dart
 import 'package:dartz/dartz.dart';
 import 'package:matchup/features/profile/data/models/user_profile_model.dart';
 import '../../../../core/errors/exceptions.dart';
@@ -177,17 +176,17 @@ class ProfileRepositoryImpl implements ProfileRepository {
           final remoteSettings = await remoteDataSource.getSettings();
           // Update cache with latest data
           await localDataSource.cacheSettings(remoteSettings);
-          return Right(remoteSettings);
+          return Right(remoteSettings.toEntity());
         } catch (e) {
           // Return cached settings if server fails
           if (cachedSettings != null) {
-            return Right(cachedSettings);
+            return Right(cachedSettings.toEntity());
           }
           return _handleException(e);
         }
       } else {
         if (cachedSettings != null) {
-          return Right(cachedSettings);
+          return Right(cachedSettings.toEntity());
         } else {
           return const Left(NetworkFailure(
             message: 'No hay conexión a internet y no hay datos en caché',
@@ -206,7 +205,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         final updatedSettings = await remoteDataSource.updateSettings(settings);
         // Update cache with new settings
         await localDataSource.cacheSettings(updatedSettings);
-        return Right(updatedSettings);
+        return Right(updatedSettings.toEntity());
       } catch (e) {
         return _handleException(e);
       }
@@ -222,7 +221,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     if (await networkInfo.isConnected) {
       try {
         final stats = await remoteDataSource.getStats();
-        return Right(stats);
+        return Right(stats.toEntity());
       } catch (e) {
         return _handleException(e);
       }

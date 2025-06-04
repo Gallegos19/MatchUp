@@ -1,10 +1,8 @@
-import 'package:json_annotation/json_annotation.dart';
-import '../../domain/entities/user_profile.dart';
+// lib/features/profile/domain/entities/user_profile.dart - COMPLETE DEFINITION
 
-part 'user_profile_model.g.dart';
+import 'package:equatable/equatable.dart';
 
-@JsonSerializable()
-class UserProfileModel {
+class UserProfile extends Equatable {
   final String id;
   final String email;
   final String firstName;
@@ -16,14 +14,14 @@ class UserProfileModel {
   final String? campus;
   final List<String> interests;
   final List<String> photoUrls;
-  final ProfileSettingsModel settings;
-  final ProfileStatsModel stats;
+  final ProfileSettings settings;
+  final ProfileStats stats;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
   final bool isVerified;
 
-  UserProfileModel({
+  const UserProfile({
     required this.id,
     required this.email,
     required this.firstName,
@@ -43,60 +41,75 @@ class UserProfileModel {
     this.isVerified = false,
   });
 
-  factory UserProfileModel.fromJson(Map<String, dynamic> json) =>
-      _$UserProfileModelFromJson(json);
+  // Computed properties
+  String get fullName => '$firstName $lastName'.trim();
+  String get displayName => fullName.isNotEmpty ? fullName : email;
+  bool get hasPhotos => photoUrls.isNotEmpty;
+  String get primaryPhoto => photoUrls.isNotEmpty ? photoUrls.first : '';
 
-  Map<String, dynamic> toJson() => _$UserProfileModelToJson(this);
-
-  // Conversión desde entidad del dominio
-  factory UserProfileModel.fromEntity(UserProfile entity) {
-    return UserProfileModel(
-      id: entity.id,
-      email: entity.email,
-      firstName: entity.firstName,
-      lastName: entity.lastName,
-      bio: entity.bio,
-      age: entity.age,
-      career: entity.career,
-      semester: entity.semester,
-      campus: entity.campus,
-      interests: entity.interests,
-      photoUrls: entity.photoUrls,
-      settings: ProfileSettingsModel.fromEntity(entity.settings),
-      stats: ProfileStatsModel.fromEntity(entity.stats),
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-      isActive: entity.isActive,
-      isVerified: entity.isVerified,
-    );
-  }
-
-  // Conversión hacia entidad del dominio
-  UserProfile toEntity() {
+  UserProfile copyWith({
+    String? id,
+    String? email,
+    String? firstName,
+    String? lastName,
+    String? bio,
+    int? age,
+    String? career,
+    String? semester,
+    String? campus,
+    List<String>? interests,
+    List<String>? photoUrls,
+    ProfileSettings? settings,
+    ProfileStats? stats,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isActive,
+    bool? isVerified,
+  }) {
     return UserProfile(
-      id: id,
-      email: email,
-      firstName: firstName,
-      lastName: lastName,
-      bio: bio,
-      age: age,
-      career: career,
-      semester: semester,
-      campus: campus,
-      interests: interests,
-      photoUrls: photoUrls,
-      settings: settings.toEntity(),
-      stats: stats.toEntity(),
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      isActive: isActive,
-      isVerified: isVerified,
+      id: id ?? this.id,
+      email: email ?? this.email,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      bio: bio ?? this.bio,
+      age: age ?? this.age,
+      career: career ?? this.career,
+      semester: semester ?? this.semester,
+      campus: campus ?? this.campus,
+      interests: interests ?? this.interests,
+      photoUrls: photoUrls ?? this.photoUrls,
+      settings: settings ?? this.settings,
+      stats: stats ?? this.stats,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isActive: isActive ?? this.isActive,
+      isVerified: isVerified ?? this.isVerified,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        email,
+        firstName,
+        lastName,
+        bio,
+        age,
+        career,
+        semester,
+        campus,
+        interests,
+        photoUrls,
+        settings,
+        stats,
+        createdAt,
+        updatedAt,
+        isActive,
+        isVerified,
+      ];
 }
 
-@JsonSerializable()
-class ProfileSettingsModel {
+class ProfileSettings extends Equatable {
   final bool showAge;
   final bool showCareer;
   final bool showCampus;
@@ -104,9 +117,9 @@ class ProfileSettingsModel {
   final bool allowNotifications;
   final bool isPrivate;
   final int maxDistance;
-  final AgeRangeModel ageRange;
+  final AgeRange ageRange;
 
-  ProfileSettingsModel({
+  const ProfileSettings({
     this.showAge = true,
     this.showCareer = true,
     this.showCampus = true,
@@ -114,43 +127,45 @@ class ProfileSettingsModel {
     this.allowNotifications = true,
     this.isPrivate = false,
     this.maxDistance = 50,
-    this.ageRange = const AgeRangeModel(min: 18, max: 30),
+    this.ageRange = const AgeRange(min: 18, max: 30),
   });
 
-  factory ProfileSettingsModel.fromJson(Map<String, dynamic> json) =>
-      _$ProfileSettingsModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ProfileSettingsModelToJson(this);
-
-  factory ProfileSettingsModel.fromEntity(ProfileSettings entity) {
-    return ProfileSettingsModel(
-      showAge: entity.showAge,
-      showCareer: entity.showCareer,
-      showCampus: entity.showCampus,
-      allowMessages: entity.allowMessages,
-      allowNotifications: entity.allowNotifications,
-      isPrivate: entity.isPrivate,
-      maxDistance: entity.maxDistance,
-      ageRange: AgeRangeModel.fromEntity(entity.ageRange),
-    );
-  }
-
-  ProfileSettings toEntity() {
+  ProfileSettings copyWith({
+    bool? showAge,
+    bool? showCareer,
+    bool? showCampus,
+    bool? allowMessages,
+    bool? allowNotifications,
+    bool? isPrivate,
+    int? maxDistance,
+    AgeRange? ageRange,
+  }) {
     return ProfileSettings(
-      showAge: showAge,
-      showCareer: showCareer,
-      showCampus: showCampus,
-      allowMessages: allowMessages,
-      allowNotifications: allowNotifications,
-      isPrivate: isPrivate,
-      maxDistance: maxDistance,
-      ageRange: ageRange.toEntity(),
+      showAge: showAge ?? this.showAge,
+      showCareer: showCareer ?? this.showCareer,
+      showCampus: showCampus ?? this.showCampus,
+      allowMessages: allowMessages ?? this.allowMessages,
+      allowNotifications: allowNotifications ?? this.allowNotifications,
+      isPrivate: isPrivate ?? this.isPrivate,
+      maxDistance: maxDistance ?? this.maxDistance,
+      ageRange: ageRange ?? this.ageRange,
     );
   }
+
+  @override
+  List<Object> get props => [
+        showAge,
+        showCareer,
+        showCampus,
+        allowMessages,
+        allowNotifications,
+        isPrivate,
+        maxDistance,
+        ageRange,
+      ];
 }
 
-@JsonSerializable()
-class ProfileStatsModel {
+class ProfileStats extends Equatable {
   final int matchesCount;
   final int likesGiven;
   final int likesReceived;
@@ -159,7 +174,7 @@ class ProfileStatsModel {
   final int eventsJoined;
   final int studyGroupsJoined;
 
-  ProfileStatsModel({
+  const ProfileStats({
     this.matchesCount = 0,
     this.likesGiven = 0,
     this.likesReceived = 0,
@@ -169,62 +184,57 @@ class ProfileStatsModel {
     this.studyGroupsJoined = 0,
   });
 
-  factory ProfileStatsModel.fromJson(Map<String, dynamic> json) =>
-      _$ProfileStatsModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ProfileStatsModelToJson(this);
-
-  factory ProfileStatsModel.fromEntity(ProfileStats entity) {
-    return ProfileStatsModel(
-      matchesCount: entity.matchesCount,
-      likesGiven: entity.likesGiven,
-      likesReceived: entity.likesReceived,
-      superLikesReceived: entity.superLikesReceived,
-      profileViews: entity.profileViews,
-      eventsJoined: entity.eventsJoined,
-      studyGroupsJoined: entity.studyGroupsJoined,
-    );
-  }
-
-  ProfileStats toEntity() {
+  ProfileStats copyWith({
+    int? matchesCount,
+    int? likesGiven,
+    int? likesReceived,
+    int? superLikesReceived,
+    int? profileViews,
+    int? eventsJoined,
+    int? studyGroupsJoined,
+  }) {
     return ProfileStats(
-      matchesCount: matchesCount,
-      likesGiven: likesGiven,
-      likesReceived: likesReceived,
-      superLikesReceived: superLikesReceived,
-      profileViews: profileViews,
-      eventsJoined: eventsJoined,
-      studyGroupsJoined: studyGroupsJoined,
+      matchesCount: matchesCount ?? this.matchesCount,
+      likesGiven: likesGiven ?? this.likesGiven,
+      likesReceived: likesReceived ?? this.likesReceived,
+      superLikesReceived: superLikesReceived ?? this.superLikesReceived,
+      profileViews: profileViews ?? this.profileViews,
+      eventsJoined: eventsJoined ?? this.eventsJoined,
+      studyGroupsJoined: studyGroupsJoined ?? this.studyGroupsJoined,
     );
   }
+
+  @override
+  List<Object> get props => [
+        matchesCount,
+        likesGiven,
+        likesReceived,
+        superLikesReceived,
+        profileViews,
+        eventsJoined,
+        studyGroupsJoined,
+      ];
 }
 
-@JsonSerializable()
-class AgeRangeModel {
+class AgeRange extends Equatable {
   final int min;
   final int max;
 
-  AgeRangeModel({
+  const AgeRange({
     required this.min,
     required this.max,
   });
 
-  factory AgeRangeModel.fromJson(Map<String, dynamic> json) =>
-      _$AgeRangeModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AgeRangeModelToJson(this);
-
-  factory AgeRangeModel.fromEntity(AgeRange entity) {
-    return AgeRangeModel(
-      min: entity.min,
-      max: entity.max,
-    );
-  }
-
-  AgeRange toEntity() {
+  AgeRange copyWith({
+    int? min,
+    int? max,
+  }) {
     return AgeRange(
-      min: min,
-      max: max,
+      min: min ?? this.min,
+      max: max ?? this.max,
     );
   }
+
+  @override
+  List<Object> get props => [min, max];
 }

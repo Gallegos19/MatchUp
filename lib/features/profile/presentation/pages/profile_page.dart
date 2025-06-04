@@ -1,9 +1,11 @@
-// lib/features/profile/presentation/pages/profile_page.dart
+// lib/features/profile/presentation/pages/profile_page.dart - COMPLETE
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../authentication/presentation/cubit/auth_cubit.dart';
+import '../cubit/profile_cubit.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_stats.dart';
 import '../widgets/profile_menu_item.dart';
@@ -17,37 +19,60 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: BlocBuilder<AuthCubit, AuthState>(
-          builder: (context, state) {
-            if (state is AuthAuthenticated) {
-              return _buildProfileContent(context, state.user);
+        child: BlocConsumer<ProfileCubit, ProfileState>(
+          listener: (context, state) {
+            if (state is ProfileError) {
+              _showErrorSnackBar(context, state.message);
+            } else if (state is ProfileSuccess) {
+              _showSuccessSnackBar(context, state.message);
             }
-            
-            return _buildUnauthenticatedState(context);
+          },
+          builder: (context, profileState) {
+            return BlocBuilder<AuthCubit, AuthState>(
+              builder: (context, authState) {
+                if (authState is AuthAuthenticated) {
+                  return _buildProfileContent(context, authState.user, profileState);
+                }
+                
+                return _buildUnauthenticatedState(context);
+              },
+            );
           },
         ),
       ),
     );
   }
 
-  Widget _buildProfileContent(BuildContext context, user) {
+  Widget _buildProfileContent(BuildContext context, user, ProfileState profileState) {
+    if (profileState is ProfileLoading) {
+      return _buildLoadingState();
+    }
+
     return CustomScrollView(
       slivers: [
-        _buildAppBar(context),
+        _buildAppBar(context, profileState),
         SliverToBoxAdapter(
           child: Column(
             children: [
               const SizedBox(height: 20),
               ProfileHeader(
-                user: user,
+                user: profileState is ProfileLoaded ? profileState.profile : user,
                 onEditPressed: () => _showEditProfileBottomSheet(context),
               ),
               const SizedBox(height: 24),
-              const ProfileStats(
-                matchesCount: 42, // TODO: Get from actual data
-                likesCount: 128,
-                superLikesCount: 15,
-                viewsCount: 256,
+              ProfileStats(
+                matchesCount: profileState is ProfileLoaded 
+                    ? profileState.stats?.matchesCount ?? 0 
+                    : 42,
+                likesCount: profileState is ProfileLoaded 
+                    ? profileState.stats?.likesReceived ?? 0 
+                    : 128,
+                superLikesCount: profileState is ProfileLoaded 
+                    ? profileState.stats?.superLikesReceived ?? 0 
+                    : 15,
+                viewsCount: profileState is ProfileLoaded 
+                    ? profileState.stats?.profileViews ?? 0 
+                    : 256,
               ),
               const SizedBox(height: 32),
               _buildMenuSection(context),
@@ -63,7 +88,26 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 16),
+          Text(
+            'Cargando perfil...',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context, ProfileState profileState) {
     return SliverAppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -77,20 +121,34 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
       actions: [
-        IconButton(
-          onPressed: () => _showEditProfileBottomSheet(context),
-          icon: const Icon(
-            Icons.edit,
-            color: AppColors.textSecondary,
+        if (profileState is ProfileUpdating || profileState is ProfilePhotoUploading)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
+              ),
+            ),
+          )
+        else ...[
+          IconButton(
+            onPressed: () => _showEditProfileBottomSheet(context),
+            icon: const Icon(
+              Icons.edit,
+              color: AppColors.textSecondary,
+            ),
           ),
-        ),
-        IconButton(
-          onPressed: () => _showSettingsPage(context),
-          icon: const Icon(
-            Icons.settings,
-            color: AppColors.textSecondary,
+          IconButton(
+            onPressed: () => _showSettingsPage(context),
+            icon: const Icon(
+              Icons.settings,
+              color: AppColors.textSecondary,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -115,7 +173,7 @@ class ProfilePage extends StatelessWidget {
             icon: Icons.photo_library,
             title: 'Mis fotos',
             subtitle: 'Gestiona tus fotos de perfil',
-            onTap: () => _showFeatureNotAvailable(context, 'Gestión de fotos'),
+            onTap: () => _handlePhotoManagement(context),
           ),
           const Divider(height: 1, color: AppColors.borderLight),
           ProfileMenuItem(
@@ -177,7 +235,7 @@ class ProfilePage extends StatelessWidget {
             icon: Icons.security,
             title: 'Seguridad',
             subtitle: 'Cambia tu contraseña',
-            onTap: () => _showFeatureNotAvailable(context, 'Configuración de seguridad'),
+            onTap: () => _handlePasswordChange(context),
           ),
           const Divider(height: 1, color: AppColors.borderLight),
           ProfileMenuItem(
@@ -260,6 +318,185 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
+  void _handlePhotoManagement(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Gestionar fotos',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+                title: const Text('Tomar foto'),
+                subtitle: const Text('Usar cámara'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showFeatureNotAvailable(context, 'Cámara');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: AppColors.primary),
+                title: const Text('Seleccionar de galería'),
+                subtitle: const Text('Elegir foto existente'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showFeatureNotAvailable(context, 'Galería');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppColors.error),
+                title: const Text('Eliminar foto'),
+                subtitle: const Text('Quitar foto actual'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showFeatureNotAvailable(context, 'Eliminar foto');
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handlePasswordChange(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final currentPasswordController = TextEditingController();
+        final newPasswordController = TextEditingController();
+        final confirmPasswordController = TextEditingController();
+        final formKey = GlobalKey<FormState>();
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Cambiar contraseña'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: currentPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña actual',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Ingresa tu contraseña actual';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Nueva contraseña',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Ingresa la nueva contraseña';
+                    }
+                    if (value.length < 6) {
+                      return 'La contraseña debe tener al menos 6 caracteres';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirmar contraseña',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_clock),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Confirma la nueva contraseña';
+                    }
+                    if (value != newPasswordController.text) {
+                      return 'Las contraseñas no coinciden';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            BlocBuilder<ProfileCubit, ProfileState>(
+              builder: (context, state) {
+                final isLoading = state is ProfilePasswordChanging;
+                return ElevatedButton(
+                  onPressed: isLoading ? null : () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      context.read<ProfileCubit>().changeUserPassword(
+                        currentPassword: currentPasswordController.text,
+                        newPassword: newPasswordController.text,
+                      );
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: isLoading 
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Cambiar'),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showSettingsPage(BuildContext context) {
     _showFeatureNotAvailable(context, 'Configuración avanzada');
   }
@@ -328,6 +565,50 @@ class ProfilePage extends StatelessWidget {
         content: Text('$feature estará disponible próximamente'),
         backgroundColor: AppColors.warning,
         behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
   }

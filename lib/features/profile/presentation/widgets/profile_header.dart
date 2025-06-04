@@ -1,10 +1,12 @@
-// lib/features/profile/presentation/widgets/profile_header.dart
+// lib/features/profile/presentation/widgets/profile_header.dart - UPDATED
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../domain/entities/user_profile.dart';
 
 class ProfileHeader extends StatelessWidget {
-  final dynamic user;
+  final dynamic user; // Can be User from auth or UserProfile
   final VoidCallback? onEditPressed;
 
   const ProfileHeader({
@@ -45,35 +47,7 @@ class ProfileHeader extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(50),
-                  child: user.photoUrls != null && user.photoUrls.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: user.photoUrls.first,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.white.withOpacity(0.2),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.white.withOpacity(0.2),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          color: Colors.white.withOpacity(0.2),
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 40,
-                          ),
-                        ),
+                  child: _buildProfileImage(),
                 ),
               ),
               if (onEditPressed != null)
@@ -108,7 +82,7 @@ class ProfileHeader extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            user.name ?? 'Usuario',
+            _getUserName(),
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -116,17 +90,17 @@ class ProfileHeader extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          if (user.age != null) ...[
+          if (_getUserAge() != null) ...[
             const SizedBox(height: 4),
             Text(
-              '${user.age} años',
+              '${_getUserAge()} años',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.white.withOpacity(0.9),
               ),
             ),
           ],
-          if (user.career != null) ...[
+          if (_getUserCareer() != null) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -135,7 +109,7 @@ class ProfileHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                user.career!,
+                _getUserCareer()!,
                 style: const TextStyle(
                   fontSize: 14,
                   color: Colors.white,
@@ -148,5 +122,81 @@ class ProfileHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildProfileImage() {
+    final photoUrls = _getPhotoUrls();
+    
+    if (photoUrls != null && photoUrls.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: photoUrls.first,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          color: Colors.white.withOpacity(0.2),
+          child: const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 40,
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.white.withOpacity(0.2),
+          child: const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 40,
+          ),
+        ),
+      );
+    }
+    
+    return Container(
+      color: Colors.white.withOpacity(0.2),
+      child: const Icon(
+        Icons.person,
+        color: Colors.white,
+        size: 40,
+      ),
+    );
+  }
+
+  String _getUserName() {
+    if (user is UserProfile) {
+      final profile = user as UserProfile;
+      return profile.displayName;
+    } else {
+      // Fallback for auth User
+      return user.name ?? user.email ?? 'Usuario';
+    }
+  }
+
+  int? _getUserAge() {
+    if (user is UserProfile) {
+      final profile = user as UserProfile;
+      return profile.age;
+    } else {
+      // Fallback for auth User
+      return user.age;
+    }
+  }
+
+  String? _getUserCareer() {
+    if (user is UserProfile) {
+      final profile = user as UserProfile;
+      return profile.career;
+    } else {
+      // Fallback for auth User
+      return user.career;
+    }
+  }
+
+  List<String>? _getPhotoUrls() {
+    if (user is UserProfile) {
+      final profile = user as UserProfile;
+      return profile.photoUrls;
+    } else {
+      // Fallback for auth User
+      return user.photoUrls;
+    }
   }
 }
