@@ -1,8 +1,16 @@
-// lib/core/navigation/pages/main_navigation_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:matchup/features/events/presentation/pages/event_page.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../../features/discovery/presentation/pages/discovery_page.dart';
+import '../../../features/matches/presentation/pages/matches_page.dart';
+import '../../../features/chat/presentation/pages/chat_page.dart';
+import '../../../features/profile/presentation/pages/profile_page.dart';
+import '../../../features/matches/presentation/viewmodels/match_viewmodel.dart';
+import '../../../features/events/presentation/cubit/events_cubit.dart';
+import '../../../features/chat/presentation/cubit/chat_cubit.dart';
+import '../../../di/injection_container.dart' as di;
 import '../cubit/navigation_cubit.dart';
 
 class MainNavigationPage extends StatelessWidget {
@@ -14,13 +22,29 @@ class MainNavigationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<NavigationCubit, NavigationState>(
-      builder: (context, state) {
-        return Scaffold(
-          body: _buildCurrentPage(state.currentTab),
-          bottomNavigationBar: _buildBottomNavigationBar(context, state),
-        );
-      },
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(
+          value: context.read<NavigationCubit>(),
+        ),
+        BlocProvider(
+          create: (_) => di.sl<EventsCubit>(),
+        ),
+        BlocProvider(
+          create: (_) => di.sl<ChatCubit>(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => di.sl<MatchViewModel>(),
+        ),
+      ],
+      child: BlocBuilder<NavigationCubit, NavigationState>(
+        builder: (context, state) {
+          return Scaffold(
+            body: _buildCurrentPage(state.currentTab),
+            bottomNavigationBar: _buildBottomNavigationBar(context, state),
+          );
+        },
+      ),
     );
   }
 
@@ -29,116 +53,14 @@ class MainNavigationPage extends StatelessWidget {
       case NavigationTab.discovery:
         return const DiscoveryPage();
       case NavigationTab.events:
-        return _buildPlaceholderPage(
-          'Eventos',
-          Icons.event,
-          'Próximamente: Eventos universitarios',
-        );
+        return const EventsPage();
       case NavigationTab.matches:
-        return _buildPlaceholderPage(
-          'Conexiones',
-          Icons.favorite,
-          'Próximamente: Tus matches',
-        );
+        return const MatchesPage();
       case NavigationTab.chat:
-        return _buildPlaceholderPage(
-          'Mensajes',
-          Icons.chat_bubble,
-          'Próximamente: Chat con tus matches',
-        );
+        return const ChatPage();
       case NavigationTab.profile:
-        return _buildPlaceholderPage(
-          'Perfil',
-          Icons.person,
-          'Próximamente: Tu perfil personal',
-        );
+        return const ProfilePage();
     }
-  }
-
-  Widget _buildPlaceholderPage(
-      String title, IconData icon, String description) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Icon(
-                icon,
-                size: 60,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Text(
-                description,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: const Text(
-                '🚀 Funcionalidad en desarrollo',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildBottomNavigationBar(
@@ -180,6 +102,7 @@ class MainNavigationPage extends StatelessWidget {
                 currentTab: state.currentTab,
                 icon: Icons.favorite,
                 label: 'Conexiones',
+                badgeCount: 3, // TODO: Get from actual data
               ),
               _buildNavItem(
                 context: context,
@@ -187,6 +110,7 @@ class MainNavigationPage extends StatelessWidget {
                 currentTab: state.currentTab,
                 icon: Icons.chat_bubble,
                 label: 'Mensajes',
+                badgeCount: 5, // TODO: Get from actual data
               ),
               _buildNavItem(
                 context: context,
@@ -208,6 +132,7 @@ class MainNavigationPage extends StatelessWidget {
     required NavigationTab currentTab,
     required IconData icon,
     required String label,
+    int badgeCount = 0,
   }) {
     final isSelected = tab == currentTab;
 
@@ -224,27 +149,60 @@ class MainNavigationPage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: isSelected ? AppColors.primaryGradient : null,
-                shape: BoxShape.circle,
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+            Stack(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: isSelected ? AppColors.primaryGradient : null,
+                    shape: BoxShape.circle,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 24,
+                    color: isSelected ? Colors.white : AppColors.textHint,
+                  ),
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
                         ),
-                      ]
-                    : null,
-              ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: isSelected ? Colors.white : AppColors.textHint,
-              ),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Text(
+                        badgeCount > 99 ? '99+' : badgeCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
