@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:matchup/core/navigation/cubit/navigation_cubit.dart';
+import 'package:matchup/features/chat/presentation/cubit/chat_cubit.dart';
+import 'package:matchup/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:matchup/di/injection_container.dart';
@@ -50,6 +52,8 @@ class AppRouter {
             BlocProvider(create: (_) => sl<DiscoveryCubit>()..loadProfiles()),
             ChangeNotifierProvider(create: (_) => sl<MatchViewModel>()..loadMatches()),
             Provider(create: (_) => sl<MatchViewModel>()..loadMatches()),
+            BlocProvider(create: (_) => sl<ChatCubit>()..loadConversations()),
+            BlocProvider(create: (_) => sl<ProfileCubit>()),
           ],
           child: const MainNavigationPage(
             initialTab: NavigationTab.discovery,

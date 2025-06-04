@@ -77,7 +77,7 @@ Future<void> init() async {
     final dio = Dio();
 
     dio.options = BaseOptions(
-      baseUrl: 'http://192.168.0.119:3000/api/v1/',
+      baseUrl: 'http://192.168.167.107:3000/api/v1/',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 30),
@@ -187,7 +187,7 @@ Future<void> init() async {
   sl.registerLazySingleton<MatchRemoteDatasource>(
     () => MatchRemoteDatasourceImpl(
       client: sl(),
-      baseUrl: 'http://192.168.0.119:3000',
+      baseUrl: 'http://192.168.167.107:3000',
       token: '', // Token will be handled by interceptor
     ),
   );

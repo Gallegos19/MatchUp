@@ -10,6 +10,8 @@ import '../../../features/profile/presentation/pages/profile_page.dart';
 import '../../../features/matches/presentation/viewmodels/match_viewmodel.dart';
 import '../../../features/events/presentation/cubit/events_cubit.dart';
 import '../../../features/chat/presentation/cubit/chat_cubit.dart';
+import '../../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../../features/profile/presentation/pages/profile_page.dart';
 import '../../../di/injection_container.dart' as di;
 import '../cubit/navigation_cubit.dart';
 
