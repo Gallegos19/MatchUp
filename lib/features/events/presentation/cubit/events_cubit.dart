@@ -1,10 +1,17 @@
+// lib/features/events/presentation/cubit/events_cubit.dart
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:matchup/core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/event.dart';
 import '../../domain/usecases/get_events.dart';
 import '../../domain/usecases/create_event.dart';
 import '../../domain/usecases/join_event.dart';
+import '../../domain/usecases/get_my_events.dart';
+import '../../domain/usecases/get_event_by_id.dart';
+import '../../domain/usecases/update_event.dart';
+import '../../domain/usecases/cancel_event.dart';
+import '../../domain/usecases/leave_event.dart';
 
 // States
 abstract class EventsState extends Equatable {
@@ -41,6 +48,24 @@ class EventsLoaded extends EventsState {
   List<Object> get props => [events, hasReachedMax];
 }
 
+class MyEventsLoaded extends EventsState {
+  final List<Event> myEvents;
+
+  const MyEventsLoaded({required this.myEvents});
+
+  @override
+  List<Object> get props => [myEvents];
+}
+
+class EventDetailsLoaded extends EventsState {
+  final Event event;
+
+  const EventDetailsLoaded({required this.event});
+
+  @override
+  List<Object> get props => [event];
+}
+
 class EventsError extends EventsState {
   final String message;
 
@@ -59,10 +84,37 @@ class EventCreated extends EventsState {
   List<Object> get props => [event];
 }
 
+class EventUpdated extends EventsState {
+  final Event event;
+
+  const EventUpdated({required this.event});
+
+  @override
+  List<Object> get props => [event];
+}
+
 class EventJoined extends EventsState {
   final String eventId;
 
   const EventJoined({required this.eventId});
+
+  @override
+  List<Object> get props => [eventId];
+}
+
+class EventLeft extends EventsState {
+  final String eventId;
+
+  const EventLeft({required this.eventId});
+
+  @override
+  List<Object> get props => [eventId];
+}
+
+class EventCancelled extends EventsState {
+  final String eventId;
+
+  const EventCancelled({required this.eventId});
 
   @override
   List<Object> get props => [eventId];
@@ -73,16 +125,27 @@ class EventsCubit extends Cubit<EventsState> {
   final GetEvents getEvents;
   final CreateEvent createEvent;
   final JoinEvent joinEvent;
+  final GetMyEvents getMyEvents;
+  final GetEventById getEventById;
+  final UpdateEvent updateEvent;
+  final CancelEvent cancelEvent;
+  final LeaveEvent leaveEvent;
 
   EventsCubit({
     required this.getEvents,
     required this.createEvent,
     required this.joinEvent,
+    required this.getMyEvents,
+    required this.getEventById,
+    required this.updateEvent,
+    required this.cancelEvent,
+    required this.leaveEvent,
   }) : super(EventsInitial());
 
   // Current state management
   int _currentPage = 1;
   final List<Event> _events = [];
+  final List<Event> _myEvents = [];
   String? _currentCampus;
   EventType? _currentType;
   List<String>? _currentTags;
@@ -90,13 +153,20 @@ class EventsCubit extends Cubit<EventsState> {
   // Getters
   bool get isLoading => state is EventsLoading;
   List<Event> get events => _events;
+  List<Event> get myEvents => _myEvents;
 
   // Load initial events
   Future<void> loadEvents({
     String? campus,
     EventType? type,
     List<String>? tags,
+    bool refresh = false,
   }) async {
+    if (!refresh && _events.isNotEmpty) {
+      emit(EventsLoaded(events: List.from(_events)));
+      return;
+    }
+
     emit(EventsLoading());
     
     _currentPage = 1;
@@ -154,6 +224,34 @@ class EventsCubit extends Cubit<EventsState> {
     );
   }
 
+  // Load my events
+  Future<void> loadMyEvents() async {
+    emit(EventsLoading());
+
+    final result = await getMyEvents();
+
+    result.fold(
+      (failure) => emit(EventsError(message: _getFailureMessage(failure))),
+      (events) {
+        _myEvents.clear();
+        _myEvents.addAll(events);
+        emit(MyEventsLoaded(myEvents: List.from(_myEvents)));
+      },
+    );
+  }
+
+  // Get event details
+  Future<void> getEventDetails(String eventId) async {
+    emit(EventsLoading());
+
+    final result = await getEventById(GetEventByIdParams(eventId: eventId));
+
+    result.fold(
+      (failure) => emit(EventsError(message: _getFailureMessage(failure))),
+      (event) => emit(EventDetailsLoaded(event: event)),
+    );
+  }
+
   // Create new event
   Future<void> createNewEvent({
     required String title,
@@ -188,12 +286,61 @@ class EventsCubit extends Cubit<EventsState> {
       (failure) => emit(EventsError(message: _getFailureMessage(failure))),
       (event) {
         emit(EventCreated(event: event));
-        // Refresh events list
-        loadEvents(
-          campus: _currentCampus,
-          type: _currentType,
-          tags: _currentTags,
-        );
+        // Add to local events list
+        _events.insert(0, event);
+        _myEvents.insert(0, event);
+      },
+    );
+  }
+
+  // Update event
+  Future<void> updateEventById({
+    required String eventId,
+    String? title,
+    String? description,
+    String? location,
+    int? maxParticipants,
+    List<String>? tags,
+  }) async {
+    emit(EventsLoading());
+
+    final result = await updateEvent(UpdateEventParams(
+      eventId: eventId,
+      title: title,
+      description: description,
+      location: location,
+      maxParticipants: maxParticipants,
+      tags: tags,
+    ));
+
+    result.fold(
+      (failure) => emit(EventsError(message: _getFailureMessage(failure))),
+      (event) {
+        emit(EventUpdated(event: event));
+        // Update local lists
+        _updateEventInLists(event);
+      },
+    );
+  }
+
+  // Cancel event
+  Future<void> cancelEventById({
+    required String eventId,
+    required String reason,
+  }) async {
+    emit(EventsLoading());
+
+    final result = await cancelEvent(CancelEventParams(
+      eventId: eventId,
+      reason: reason,
+    ));
+
+    result.fold(
+      (failure) => emit(EventsError(message: _getFailureMessage(failure))),
+      (_) {
+        emit(EventCancelled(eventId: eventId));
+        // Remove from local lists or mark as cancelled
+        _removeEventFromLists(eventId);
       },
     );
   }
@@ -208,10 +355,20 @@ class EventsCubit extends Cubit<EventsState> {
         emit(EventJoined(eventId: eventId));
         // Update local events list
         _updateEventJoinStatus(eventId, true);
-        if (state is EventsLoaded) {
-          final currentState = state as EventsLoaded;
-          emit(currentState.copyWith(events: List.from(_events)));
-        }
+      },
+    );
+  }
+
+  // Leave event
+  Future<void> leaveEventById(String eventId) async {
+    final result = await leaveEvent(LeaveEventParams(eventId: eventId));
+
+    result.fold(
+      (failure) => emit(EventsError(message: _getFailureMessage(failure))),
+      (_) {
+        emit(EventLeft(eventId: eventId));
+        // Update local events list
+        _updateEventJoinStatus(eventId, false);
       },
     );
   }
@@ -222,12 +379,12 @@ class EventsCubit extends Cubit<EventsState> {
     EventType? type,
     List<String>? tags,
   }) async {
-    await loadEvents(campus: campus, type: type, tags: tags);
+    await loadEvents(campus: campus, type: type, tags: tags, refresh: true);
   }
 
   // Clear filters
   Future<void> clearFilters() async {
-    await loadEvents();
+    await loadEvents(refresh: true);
   }
 
   // Refresh events
@@ -236,35 +393,76 @@ class EventsCubit extends Cubit<EventsState> {
       campus: _currentCampus,
       type: _currentType,
       tags: _currentTags,
+      refresh: true,
     );
   }
 
-  // Helper method to update event join status locally
+  // Refresh my events
+  Future<void> refreshMyEvents() async {
+    await loadMyEvents();
+  }
+
+  // Helper methods
+  void _updateEventInLists(Event updatedEvent) {
+    // Update in all events
+    final allEventsIndex = _events.indexWhere((event) => event.id == updatedEvent.id);
+    if (allEventsIndex != -1) {
+      _events[allEventsIndex] = updatedEvent;
+    }
+
+    // Update in my events
+    final myEventsIndex = _myEvents.indexWhere((event) => event.id == updatedEvent.id);
+    if (myEventsIndex != -1) {
+      _myEvents[myEventsIndex] = updatedEvent;
+    }
+  }
+
+  void _removeEventFromLists(String eventId) {
+    _events.removeWhere((event) => event.id == eventId);
+    _myEvents.removeWhere((event) => event.id == eventId);
+  }
+
   void _updateEventJoinStatus(String eventId, bool isJoined) {
-    final index = _events.indexWhere((event) => event.id == eventId);
-    if (index != -1) {
-      final updatedEvent = Event(
-        id: _events[index].id,
-        title: _events[index].title,
-        description: _events[index].description,
-        type: _events[index].type,
-        location: _events[index].location,
-        campus: _events[index].campus,
-        startDate: _events[index].startDate,
-        endDate: _events[index].endDate,
-        maxParticipants: _events[index].maxParticipants,
-        currentParticipants: isJoined 
-            ? _events[index].currentParticipants + 1
-            : _events[index].currentParticipants - 1,
-        isPublic: _events[index].isPublic,
-        authorId: _events[index].authorId,
-        authorName: _events[index].authorName,
-        tags: _events[index].tags,
-        requirements: _events[index].requirements,
-        isJoined: isJoined,
-        createdAt: _events[index].createdAt,
-      );
-      _events[index] = updatedEvent;
+    final updateEvent = (List<Event> eventsList) {
+      final index = eventsList.indexWhere((event) => event.id == eventId);
+      if (index != -1) {
+        final currentEvent = eventsList[index];
+        final updatedEvent = Event(
+          id: currentEvent.id,
+          title: currentEvent.title,
+          description: currentEvent.description,
+          type: currentEvent.type,
+          location: currentEvent.location,
+          campus: currentEvent.campus,
+          startDate: currentEvent.startDate,
+          endDate: currentEvent.endDate,
+          maxParticipants: currentEvent.maxParticipants,
+          currentParticipants: isJoined 
+              ? currentEvent.currentParticipants + 1
+              : (currentEvent.currentParticipants > 0 
+                  ? currentEvent.currentParticipants - 1 
+                  : 0),
+          isPublic: currentEvent.isPublic,
+          authorId: currentEvent.authorId,
+          authorName: currentEvent.authorName,
+          tags: currentEvent.tags,
+          requirements: currentEvent.requirements,
+          isJoined: isJoined,
+          createdAt: currentEvent.createdAt,
+        );
+        eventsList[index] = updatedEvent;
+      }
+    };
+
+    updateEvent(_events);
+    updateEvent(_myEvents);
+
+    // Re-emit current state with updated data
+    if (state is EventsLoaded) {
+      final currentState = state as EventsLoaded;
+      emit(currentState.copyWith(events: List.from(_events)));
+    } else if (state is MyEventsLoaded) {
+      emit(MyEventsLoaded(myEvents: List.from(_myEvents)));
     }
   }
 
@@ -278,7 +476,14 @@ class EventsCubit extends Cubit<EventsState> {
         return 'Sesión expirada. Inicia sesión nuevamente';
       case ValidationFailure:
         return failure.message;
+      case NotFoundException:
+        return 'Evento no encontrado';
       default:
+        if (failure is ConflictException) {
+          return failure.message.isNotEmpty
+              ? failure.message
+              : 'Ya estás registrado en este evento';
+        }
         return failure.message.isNotEmpty 
             ? failure.message 
             : 'Ha ocurrido un error inesperado';

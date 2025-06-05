@@ -1,6 +1,11 @@
 // lib/di/injection_container.dart
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
+import 'package:matchup/features/events/domain/usecases/cancel_event.dart';
+import 'package:matchup/features/events/domain/usecases/get_event_by_id.dart';
+import 'package:matchup/features/events/domain/usecases/get_my_events.dart';
+import 'package:matchup/features/events/domain/usecases/leave_event.dart';
+import 'package:matchup/features/events/domain/usecases/update_event.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -282,13 +287,23 @@ Future<void> init() async {
       getEvents: sl(),
       createEvent: sl(),
       joinEvent: sl(),
+      getMyEvents: sl(),
+      getEventById: sl(),
+      updateEvent: sl(),
+      cancelEvent: sl(),
+      leaveEvent: sl(),
     ),
   );
 
-  // Use cases
+// Use cases
   sl.registerLazySingleton(() => GetEvents(sl()));
   sl.registerLazySingleton(() => CreateEvent(sl()));
   sl.registerLazySingleton(() => JoinEvent(sl()));
+  sl.registerLazySingleton(() => GetMyEvents(sl()));
+  sl.registerLazySingleton(() => GetEventById(sl()));
+  sl.registerLazySingleton(() => UpdateEvent(sl()));
+  sl.registerLazySingleton(() => CancelEvent(sl()));
+  sl.registerLazySingleton(() => LeaveEvent(sl()));
 
   // Repository
   sl.registerLazySingleton<EventsRepository>(
@@ -356,7 +371,7 @@ Future<void> updateStoredToken(String token) async {
   try {
     final prefs = sl<SharedPreferences>();
     await prefs.setString('auth_token', token);
-    
+
     // Update Dio headers
     final dio = sl<Dio>();
     dio.options.headers['Authorization'] = 'Bearer $token';

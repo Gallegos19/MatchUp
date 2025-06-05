@@ -1,4 +1,3 @@
-
 // lib/features/events/data/datasource/events_remote_datasource.dart
 import 'package:dio/dio.dart';
 import '../../../../core/errors/exceptions.dart';
@@ -63,17 +62,25 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
       final queryParams = <String, dynamic>{
         'page': page,
         'limit': limit,
+        'status': 'active', // Solo eventos activos
       };
 
       if (campus != null) queryParams['campus'] = campus;
-      if (type != null) queryParams['type'] = type.toString().split('.').last;
-      if (tags != null) queryParams['tags'] = tags;
+      if (type != null) queryParams['eventType'] = type.toString().split('.').last;
+      if (tags != null && tags.isNotEmpty) queryParams['tags'] = tags.join(',');
+
+      print('🔍 Query params enviados: $queryParams'); // Debug
 
       final response = await dio.get('events/', queryParameters: queryParams);
 
+      print('🔍 Response status: ${response.statusCode}'); // Debug
+      print('🔍 Response data: ${response.data}'); // Debug
+
       if (response.statusCode == 200) {
-        final data = response.data['data'] ?? response.data;
-        final List<dynamic> eventsJson = data is List ? data : data['events'] ?? [];
+        final data = response.data;
+        final List<dynamic> eventsJson = data is List ? data : (data['data'] ?? data['events'] ?? []);
+        
+        print('🔍 Eventos encontrados: ${eventsJson.length}'); // Debug
         
         return eventsJson.map((json) => EventModel.fromJson(json)).toList();
       } else {
@@ -83,8 +90,10 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
         );
       }
     } on DioException catch (e) {
+      print('🔍 DioException: $e'); // Debug
       throw _handleDioException(e);
     } catch (e) {
+      print('🔍 Error general: $e'); // Debug
       throw ServerException(
         message: 'Error inesperado: $e',
         statusCode: 500,
@@ -107,26 +116,32 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
     required List<EventRequirement> requirements,
   }) async {
     try {
-      final response = await dio.post(
-        'events/',
-        data: {
-          'title': title,
-          'description': description,
-          'eventType': type.toString().split('.').last,
-          'location': location,
-          'campus': campus,
-          'startDate': startDate.toIso8601String(),
-          'endDate': endDate.toIso8601String(),
-          'maxParticipants': maxParticipants,
-          'isPublic': isPublic,
-          'tags': tags,
-          'requirements': requirements.map((req) => {
-            'type': req.type,
-            if (req.type == 'semester') 'minSemester': req.value,
-            if (req.type == 'gpa') 'minGpa': req.value,
-          }).toList(),
-        },
-      );
+      final requestData = {
+        'title': title,
+        'description': description,
+        'eventType': type.toString().split('.').last, // 'social', 'academic', etc.
+        'location': location,
+        'campus': campus,
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate.toIso8601String(),
+        'maxParticipants': maxParticipants,
+        'isPublic': isPublic,
+        'tags': tags,
+        'requirements': requirements.map((req) => {
+          'type': req.type,
+          'value': req.value,
+          // Agregar campos específicos para compatibilidad
+          if (req.type == 'semester') 'minSemester': req.value,
+          if (req.type == 'gpa') 'minGpa': req.value,
+        }).toList(),
+      };
+
+      print('🔍 Datos enviados para crear evento: $requestData'); // Debug
+
+      final response = await dio.post('events/', data: requestData);
+
+      print('🔍 Response crear evento status: ${response.statusCode}'); // Debug
+      print('🔍 Response crear evento data: ${response.data}'); // Debug
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data['data'] ?? response.data;
@@ -138,8 +153,10 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
         );
       }
     } on DioException catch (e) {
+      print('🔍 Error DioException crear evento: $e'); // Debug
       throw _handleDioException(e);
     } catch (e) {
+      print('🔍 Error general crear evento: $e'); // Debug
       throw ServerException(
         message: 'Error inesperado: $e',
         statusCode: 500,
@@ -152,10 +169,16 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
     try {
       final response = await dio.get('events/my-events');
 
+      print('🔍 Response getMyEvents status: ${response.statusCode}'); // Debug
+      print('🔍 Response getMyEvents data: ${response.data}'); // Debug
+
       if (response.statusCode == 200) {
-        final data = response.data['data'] ?? response.data;
-        final List<dynamic> eventsJson = data is List ? data : data['events'] ?? [];
+        final data = response.data;
+        final List<dynamic> eventsJson = data is List ? data : (data['data'] ?? data['events'] ?? []);
         
+        print('🔍 Mis eventos encontrados: ${eventsJson.length}'); // Debug
+        
+        // Para "mis eventos", forzar isJoined = true ya que son eventos donde participo
         return eventsJson.map((json) => EventModel.fromJson(json)).toList();
       } else {
         throw ServerException(
@@ -164,8 +187,10 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
         );
       }
     } on DioException catch (e) {
+      print('🔍 Error DioException getMyEvents: $e'); // Debug
       throw _handleDioException(e);
     } catch (e) {
+      print('🔍 Error general getMyEvents: $e'); // Debug
       throw ServerException(
         message: 'Error inesperado: $e',
         statusCode: 500,
@@ -316,7 +341,7 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
       
       case DioExceptionType.badResponse:
         final statusCode = e.response?.statusCode;
-        final message = e.response?.data['message'] ?? 'Error del servidor';
+        final message = e.response?.data?['message'] ?? 'Error del servidor';
         
         switch (statusCode) {
           case 400:
@@ -327,6 +352,8 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
             return UnauthorizedException(message: message, statusCode: statusCode);
           case 404:
             return NotFoundException(message: message, statusCode: statusCode);
+          case 409:
+            return ConflictException(message: message, statusCode: statusCode);
           default:
             return ServerException(message: message, statusCode: statusCode);
         }

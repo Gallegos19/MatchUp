@@ -7,12 +7,20 @@ class EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback? onTap;
   final VoidCallback? onJoin;
+  final VoidCallback? onLeave;
+  final bool showActions;
+  final VoidCallback? onEdit;
+  final VoidCallback? onCancel;
 
   const EventCard({
     Key? key,
     required this.event,
     this.onTap,
     this.onJoin,
+    this.onLeave,
+    this.showActions = false,
+    this.onEdit,
+    this.onCancel,
   }) : super(key: key);
 
   @override
@@ -26,146 +34,157 @@ class EventCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildEventTypeIcon(),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          event.title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      _buildEventTypeIcon(),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              event.title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Por ${event.authorName}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Por ${event.authorName}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      _buildStatusBadge(),
+                    ],
                   ),
-                  _buildStatusBadge(),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              Text(
-                event.description,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: AppColors.textHint,
-                  ),
-                  const SizedBox(width: 4),
+                  
+                  const SizedBox(height: 12),
+                  
                   Text(
-                    _formatDate(event.startDate),
+                    event.description,
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textHint,
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
                     ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 16),
-                  Icon(
-                    Icons.location_on,
-                    size: 16,
-                    color: AppColors.textHint,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      event.location,
-                      style: const TextStyle(
-                        fontSize: 12,
+                  
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
                         color: AppColors.textHint,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(event.startDate),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: AppColors.textHint,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          event.location,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textHint,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people,
+                        size: 16,
+                        color: AppColors.textHint,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${event.currentParticipants}/${event.maxParticipants} participantes',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(
+                        Icons.school,
+                        size: 16,
+                        color: AppColors.textHint,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        event.campus,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  if (event.tags.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildTags(),
+                  ],
+                  
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildParticipantsBar(),
+                      ),
+                      const SizedBox(width: 16),
+                      _buildActionButton(),
+                    ],
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 8),
-              
-              Row(
-                children: [
-                  Icon(
-                    Icons.people,
-                    size: 16,
-                    color: AppColors.textHint,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${event.currentParticipants}/${event.maxParticipants} participantes',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textHint,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(
-                    Icons.school,
-                    size: 16,
-                    color: AppColors.textHint,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    event.campus,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textHint,
-                    ),
-                  ),
-                ],
+            ),
+            // Actions menu - Mostrar si está unido O si tiene permisos de edición
+            if (showActions || event.isJoined)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: _buildActionsMenu(context),
               ),
-              
-              if (event.tags.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildTags(),
-              ],
-              
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildParticipantsBar(),
-                  ),
-                  const SizedBox(width: 16),
-                  _buildJoinButton(),
-                ],
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -345,22 +364,67 @@ class EventCard extends StatelessWidget {
     );
   }
 
-  Widget _buildJoinButton() {
+  Widget _buildActionButton() {
     if (event.isJoined) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.success.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.success),
-        ),
-        child: const Text(
-          'Unido',
-          style: TextStyle(
-            color: AppColors.success,
-            fontWeight: FontWeight.w600,
+      return Row(
+        children: [
+          // Botón de "Unido" (indicador)
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.success.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.success),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.check, size: 16, color: AppColors.success),
+                  SizedBox(width: 4),
+                  Text(
+                    'Unido',
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          // Botón de "Salir"
+          InkWell(
+            onTap: onJoin, // Esta función manejará salir del evento
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.error.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.exit_to_app, size: 16, color: AppColors.error),
+                  SizedBox(width: 4),
+                  Text(
+                    'Salir',
+                    style: TextStyle(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -390,13 +454,141 @@ class EventCard extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
+        elevation: 0,
       ),
-      child: const Text(
-        'Unirse',
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.add, size: 16),
+          SizedBox(width: 4),
+          Text(
+            'Unirse',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionsMenu(BuildContext context) {
+    // Debug
+    print('🔍 EventCard - Evento: ${event.title}');
+    print('🔍 EventCard - isJoined: ${event.isJoined}');
+    print('🔍 EventCard - showActions: $showActions');
+    
+    // Determinar qué opciones mostrar
+    final canEdit = showActions; // Si showActions está en true, puede editar (es el creador)
+    final canLeave = event.isJoined || showActions; // Si está unido O si es "Mis eventos" (showActions = true)
+    final canCancel = !event.hasStarted && showActions; // Solo creador y evento no empezado
+
+    print('🔍 EventCard - canEdit: $canEdit, canLeave: $canLeave, canCancel: $canCancel');
+
+    // Si no hay opciones disponibles, no mostrar el menú
+    if (!canEdit && !canLeave && !canCancel) {
+      return const SizedBox.shrink();
+    }
+
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        print('🔍 Acción seleccionada: $value para evento ${event.title}');
+        switch (value) {
+          case 'edit':
+            onEdit?.call();
+            break;
+          case 'cancel':
+            onCancel?.call();
+            break;
+          case 'leave':
+            if (onLeave != null) {
+              onLeave!();
+            } else if (onJoin != null) {
+              onJoin!();
+            }
+            break;
+        }
+      },
+      icon: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.more_vert,
+          size: 20,
+          color: AppColors.textSecondary,
         ),
       ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      itemBuilder: (BuildContext context) {
+        List<PopupMenuEntry<String>> items = [];
+
+        // Opción de editar (solo si es el creador/organizador)
+        if (canEdit) {
+          items.add(
+            const PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit, size: 20, color: AppColors.primary),
+                  SizedBox(width: 12),
+                  Text('Editar evento'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Opción de salir del evento (si está unido O si está en "Mis eventos")
+        if (canLeave) {
+          items.add(
+            const PopupMenuItem<String>(
+              value: 'leave',
+              child: Row(
+                children: [
+                  Icon(Icons.exit_to_app, size: 20, color: AppColors.warning),
+                  SizedBox(width: 12),
+                  Text('Salir del evento'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Separador si hay tanto opciones de edición como de salir
+        if (canEdit && canLeave && canCancel) {
+          items.add(const PopupMenuDivider());
+        }
+
+        // Opción de cancelar (solo si no ha empezado y es el creador)
+        if (canCancel) {
+          items.add(
+            const PopupMenuItem<String>(
+              value: 'cancel',
+              child: Row(
+                children: [
+                  Icon(Icons.cancel, size: 20, color: AppColors.error),
+                  SizedBox(width: 12),
+                  Text('Cancelar evento'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return items;
+      },
     );
   }
 
