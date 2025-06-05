@@ -1,3 +1,4 @@
+// lib/features/authentication/presentation/pages/register_page.dart - FIXED
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -87,8 +88,16 @@ class _RegisterPageState extends State<RegisterPage> {
             key: _formKey,
             child: BlocListener<AuthCubit, AuthState>(
               listener: (context, state) {
-                if (state is AuthAuthenticated) {
-                  _showSuccessSnackBar();
+                // FIXED: Handle the new AuthRegistrationSuccess state
+                if (state is AuthRegistrationSuccess) {
+                  _showSuccessSnackBar(state.message);
+                  // Navigate to login page instead of home
+                  context.go(AppRouter.login);
+                  // Clear the registration success state
+                  context.read<AuthCubit>().clearRegistrationSuccess();
+                } else if (state is AuthAuthenticated) {
+                  // This should not happen after registration anymore
+                  // But just in case, navigate to home
                   context.go(AppRouter.home);
                 } else if (state is AuthError) {
                   _showErrorSnackBar(state.message);
@@ -495,7 +504,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _handleRegister() async {
     if (_formKey.currentState?.validate() ?? false) {
-      await context.read<AuthCubit>().register(
+      final success = await context.read<AuthCubit>().register(
         email: _emailController.text,
         password: _passwordController.text,
         firstName: _firstNameController.text,
@@ -505,6 +514,9 @@ class _RegisterPageState extends State<RegisterPage> {
         semester: _selectedSemester,
         campus: _selectedCampus,
       );
+
+      // The navigation will be handled by the BlocListener
+      // based on the state emitted from the AuthCubit
     }
   }
 
@@ -512,12 +524,13 @@ class _RegisterPageState extends State<RegisterPage> {
     context.go(AppRouter.login);
   }
 
-  void _showSuccessSnackBar() {
+  void _showSuccessSnackBar([String? customMessage]) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('¡Registro exitoso!'),
+      SnackBar(
+        content: Text(customMessage ?? '¡Registro exitoso!'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4), // Show longer for custom message
       ),
     );
   }

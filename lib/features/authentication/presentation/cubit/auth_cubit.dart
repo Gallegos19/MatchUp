@@ -1,4 +1,3 @@
-// lib/features/authentication/presentation/cubit/auth_cubit.dart
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/errors/failures.dart';
@@ -39,6 +38,16 @@ class AuthError extends AuthState {
   List<Object> get props => [message];
 }
 
+// NEW: State specifically for successful registration
+class AuthRegistrationSuccess extends AuthState {
+  final String message;
+
+  const AuthRegistrationSuccess({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
+
 // Cubit
 class AuthCubit extends Cubit<AuthState> {
   final LoginUser loginUser;
@@ -65,8 +74,6 @@ class AuthCubit extends Cubit<AuthState> {
   // Password visibility methods
   void togglePasswordVisibility() {
     _isPasswordVisible = !_isPasswordVisible;
-    // We don't emit a new state for UI-only changes
-    // Instead, we can use a separate stream or callback
   }
 
   void toggleConfirmPasswordVisibility() {
@@ -130,11 +137,16 @@ class AuthCubit extends Cubit<AuthState> {
         return false;
       },
       (user) async {
-        // Store token if available
-        if (user is AuthenticatedUser && user.token != null) {
-          await di.updateStoredToken(user.token!);
-        }
-        emit(AuthAuthenticated(user: user));
+        // FIXED: Don't authenticate user immediately after registration
+        // Instead, emit a success state that indicates registration was successful
+        // but user needs to login
+        
+        // Don't store token or authenticate user automatically
+        // Let them login manually for security reasons
+        
+        emit(AuthRegistrationSuccess(
+          message: 'Registro exitoso. Por favor, inicia sesión con tus credenciales.',
+        ));
         return true;
       },
     );
@@ -147,10 +159,6 @@ class AuthCubit extends Cubit<AuthState> {
       // Clear stored token
       await di.clearAuthData();
 
-      // Navigation should be handled in the UI after receiving AuthUnauthenticated state.
-      // TODO: Call logout use case when implemented
-      // final result = await logoutUser(NoParams());
-      
       emit(AuthUnauthenticated());
     } catch (e) {
       emit(AuthError(message: 'Error al cerrar sesión: $e'));
@@ -159,6 +167,12 @@ class AuthCubit extends Cubit<AuthState> {
 
   void clearError() {
     if (state is AuthError) {
+      emit(AuthInitial());
+    }
+  }
+
+  void clearRegistrationSuccess() {
+    if (state is AuthRegistrationSuccess) {
       emit(AuthInitial());
     }
   }

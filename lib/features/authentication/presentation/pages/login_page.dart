@@ -1,4 +1,4 @@
-// lib/features/authentication/presentation/pages/login_page.dart
+// lib/features/authentication/presentation/pages/login_page.dart - UPDATED
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -60,6 +60,7 @@ class _LoginPageState extends State<LoginPage> {
                 if (state is AuthAuthenticated) {
                   _showSuccessSnackBar();
                   context.go(AppRouter.home);
+                  // Set initial navigation tab after successful login
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {
                       context
@@ -69,6 +70,11 @@ class _LoginPageState extends State<LoginPage> {
                   });
                 } else if (state is AuthError) {
                   _showErrorSnackBar(state.message);
+                } else if (state is AuthRegistrationSuccess) {
+                  // Show the registration success message if user comes from registration
+                  _showInfoSnackBar(state.message);
+                  // Clear the registration success state
+                  context.read<AuthCubit>().clearRegistrationSuccess();
                 }
               },
               child: Column(
@@ -300,10 +306,11 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
-      await context.read<AuthCubit>().login(
+      final success = await context.read<AuthCubit>().login(
             email: _emailController.text,
             password: _passwordController.text,
           );
+      // Navigation will be handled by BlocListener
     }
   }
 
@@ -345,6 +352,17 @@ class _LoginPageState extends State<LoginPage> {
         content: Text(message),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showInfoSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.info,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
