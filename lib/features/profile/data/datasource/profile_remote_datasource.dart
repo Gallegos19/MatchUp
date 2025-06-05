@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:matchup/core/services/cloudinary_service.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../models/user_profile_model.dart';
 import '../../domain/entities/user_profile.dart';
@@ -13,6 +14,7 @@ abstract class ProfileRemoteDataSource {
     String? semester,
     String? campus,
     List<String>? interests,
+    List<String>? photoUrls,
   });
   Future<List<String>> uploadPhotos(List<String> imagePaths);
   Future<void> deletePhoto(String photoUrl);
@@ -32,6 +34,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   final Dio dio;
 
   ProfileRemoteDataSourceImpl({required this.dio});
+  
 
   @override
   Future<UserProfileModel> getProfile() async {
@@ -66,6 +69,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? semester,
     String? campus,
     List<String>? interests,
+    List<String>? photoUrls,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -76,6 +80,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (semester != null) data['semester'] = semester;
       if (campus != null) data['campus'] = campus;
       if (interests != null) data['interests'] = interests;
+      if (photoUrls != null) data['photoUrls'] = photoUrls;
 
       final response = await dio.put('users/profile', data: data);
 
@@ -98,26 +103,26 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     }
   }
 
-  @override
+@override
   Future<List<String>> uploadPhotos(List<String> imagePaths) async {
     try {
-      final formData = FormData();
-      for (int i = 0; i < imagePaths.length; i++) {
-        formData.files.add(MapEntry(
-          'photos',
-          await MultipartFile.fromFile(imagePaths[i]),
-        ));
-      }
+      // Subir imágenes a Cloudinary primero
+      final cloudinaryService = CloudinaryService(dio: dio);
+      final photoUrls = await cloudinaryService.uploadMultipleImages(
+        imagePaths,
+        folder: 'matchup/profiles',
+      );
 
-      final response = await dio.post('users/photos', data: formData);
+      // Luego actualizar el perfil con las URLs
+      final response = await dio.put('users/profile', data: {
+        'photoUrls': photoUrls,
+      });
 
       if (response.statusCode == 200) {
-        final data = response.data['data'] ?? response.data;
-        final List<dynamic> photoUrls = data['photoUrls'] ?? [];
-        return photoUrls.map((e) => e.toString()).toList();
+        return photoUrls;
       } else {
         throw ServerException(
-          message: response.data['message'] ?? 'Error al subir fotos',
+          message: response.data['message'] ?? 'Error al actualizar fotos en perfil',
           statusCode: response.statusCode,
         );
       }

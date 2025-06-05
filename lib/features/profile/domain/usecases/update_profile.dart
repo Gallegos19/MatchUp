@@ -1,3 +1,4 @@
+// lib/features/profile/domain/usecases/update_profile.dart
 import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/errors/failures.dart';
@@ -20,6 +21,7 @@ class UpdateProfile implements UseCase<UserProfile, UpdateProfileParams> {
       semester: params.semester,
       campus: params.campus,
       interests: params.interests,
+      photoUrls: params.photoUrls,
     );
   }
 }
@@ -32,6 +34,7 @@ class UpdateProfileParams extends Equatable {
   final String? semester;
   final String? campus;
   final List<String>? interests;
+  final List<String>? photoUrls;
 
   const UpdateProfileParams({
     this.firstName,
@@ -41,6 +44,7 @@ class UpdateProfileParams extends Equatable {
     this.semester,
     this.campus,
     this.interests,
+    this.photoUrls,
   });
 
   @override
@@ -52,5 +56,6 @@ class UpdateProfileParams extends Equatable {
         semester,
         campus,
         interests,
+        photoUrls,
       ];
 }

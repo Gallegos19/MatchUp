@@ -130,6 +130,7 @@ class ProfileCubit extends Cubit<ProfileState> {
       semester: semester,
       campus: campus,
       interests: interests,
+      photoUrls: _currentProfile?.photoUrls ?? [],
     ));
     result.fold(
       (failure) => emit(ProfileError(message: failure.message)),
@@ -142,24 +143,33 @@ class ProfileCubit extends Cubit<ProfileState> {
   }
 
   // Subir fotos
-  Future<void> uploadProfilePhotos(List<String> imagePaths) async {
+  Future<List<String>> uploadProfilePhotos(List<String> imagePaths) async {
     emit(const ProfilePhotoUploading(progress: 0));
-    final result =
-        await uploadPhotos(UploadPhotosParams(imagePaths: imagePaths));
-    result.fold(
-      (failure) => emit(ProfileError(message: failure.message)),
-      (photoUrls) {
-        if (_currentProfile != null) {
-          _currentProfile = _currentProfile!.copyWith(
-            photoUrls: [..._currentProfile!.photoUrls, ...photoUrls],
-          );
-          emit(ProfileLoaded(profile: _currentProfile!, stats: _currentStats));
-          emit(const ProfileSuccess(message: 'Fotos subidas correctamente'));
-        }
-      },
-    );
+    
+    try {
+      final result = await uploadPhotos(UploadPhotosParams(imagePaths: imagePaths));
+      
+      return result.fold(
+        (failure) {
+          emit(ProfileError(message: failure.message));
+          return <String>[];
+        },
+        (photoUrls) {
+          if (_currentProfile != null) {
+            _currentProfile = _currentProfile!.copyWith(
+              photoUrls: [..._currentProfile!.photoUrls, ...photoUrls],
+            );
+            emit(ProfileLoaded(profile: _currentProfile!, stats: _currentStats));
+            emit(const ProfileSuccess(message: 'Fotos subidas correctamente'));
+          }
+          return photoUrls;
+        },
+      );
+    } catch (e) {
+      emit(ProfileError(message: 'Error al subir fotos: $e'));
+      return <String>[];
+    }
   }
-
   // Cargar estadísticas
   Future<void> getProfileStatsData() async {
     final result = await getProfileStats();

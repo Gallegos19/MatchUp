@@ -1,4 +1,6 @@
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
+import 'package:matchup/core/services/cloudinary_service.dart';
 import 'package:matchup/features/profile/data/models/user_profile_model.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
@@ -12,11 +14,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;
   final ProfileLocalDataSource localDataSource;
   final NetworkInfo networkInfo;
+  final Dio dio;
 
   ProfileRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
     required this.networkInfo,
+    required this.dio,
   });
 
   @override
@@ -61,6 +65,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? semester,
     String? campus,
     List<String>? interests,
+    List<String>? photoUrls,
   }) async {
     if (await networkInfo.isConnected) {
       try {
@@ -72,6 +77,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
           semester: semester,
           campus: campus,
           interests: interests,
+          photoUrls: photoUrls,
         );
 
         // Update cache with new data
@@ -92,20 +98,33 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<Either<Failure, List<String>>> uploadPhotos(List<String> imagePaths) async {
     if (await networkInfo.isConnected) {
       try {
-        final photoUrls = await remoteDataSource.uploadPhotos(imagePaths);
-        
-        // Update cached profile with new photos
-        final cachedProfile = await localDataSource.getCachedProfile();
-        if (cachedProfile != null) {
-          final updatedProfile = cachedProfile.copyWith(
-            photoUrls: [...cachedProfile.photoUrls, ...photoUrls],
-          );
-          await localDataSource.cacheProfile(updatedProfile as UserProfileModel);
-        }
+        // Subir imágenes a Cloudinary primero
+        final cloudinaryService = CloudinaryService(dio: dio);
+        final photoUrls = await cloudinaryService.uploadMultipleImages(
+          imagePaths,
+          folder: 'matchup/profiles',
+        );
 
-        return Right(photoUrls);
-      } catch (e) {
+        // Luego actualizar el perfil con las URLs
+        final response = await dio.put('users/profile', data: {
+          'photoUrls': photoUrls,
+        });
+
+        if (response.statusCode == 200) {
+          return Right(photoUrls);
+        } else {
+          return Left(ServerFailure(
+            message: response.data['message'] ?? 'Error al actualizar fotos en perfil',
+            code: response.statusCode,
+          ));
+        }
+      } on DioException catch (e) {
         return _handleException(e);
+      } catch (e) {
+        return Left(ServerFailure(
+          message: 'Error inesperado: $e',
+          code: 500,
+        ));
       }
     } else {
       return const Left(NetworkFailure(

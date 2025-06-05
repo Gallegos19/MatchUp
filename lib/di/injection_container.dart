@@ -79,6 +79,9 @@ import '../features/profile/domain/usecases/update_profile_settings.dart';
 import '../features/profile/domain/usecases/change_password.dart';
 import '../features/profile/presentation/cubit/profile_cubit.dart';
 
+import '../core/services/cloudinary_service.dart';
+import '../core/services/image_picker_service.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -193,6 +196,7 @@ Future<void> init() async {
       remoteDataSource: sl(),
       localDataSource: sl(),
       networkInfo: sl(),
+      dio: sl(),
     ),
   );
 

@@ -1,4 +1,3 @@
-// lib/features/authentication/data/repositories/auth_repository_impl.dart - REGISTRO FIX
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';

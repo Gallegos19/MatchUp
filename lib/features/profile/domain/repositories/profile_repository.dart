@@ -13,6 +13,7 @@ abstract class ProfileRepository {
     String? semester,
     String? campus,
     List<String>? interests,
+    List<String>? photoUrls,
   });
   
   // Photo management
